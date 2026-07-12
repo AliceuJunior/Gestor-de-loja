@@ -1,5 +1,5 @@
 # fly.toml file para deploy no Fly.io
-app = "" # Deixe em branco ou coloque o nome do seu app cadastrado no Fly.io
+app = "Gestor-de-loja" # Deixe em branco ou coloque o nome do seu app cadastrado no Fly.io
 
 primary_region = "gru" # Configurado para São Paulo (Brasil) por padrão
 

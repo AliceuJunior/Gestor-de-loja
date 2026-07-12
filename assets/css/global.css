@@ -1,0 +1,149 @@
+/* 
+  global.css
+  Este arquivo aplica as regras CSS fundamentais para toda a aplicação.
+  Ele atua como o "reset" e a fundação do tema "Sophisticated Dark".
+*/
+
+/* ==========================================================================
+   1. Reset de Layout e Box-Sizing
+   ========================================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent; /* Remove o flash azul ao tocar em botões no mobile */
+}
+
+/* ==========================================================================
+   2. Configurações Base do Documento (HTML e Body)
+   ========================================================================== */
+html {
+  height: 100%;
+  font-size: 16px; /* Definição base para unidades REM */
+  background-color: var(--bg-primary);
+  color-scheme: dark; /* Informa ao navegador para preferir elementos escuros padrão */
+}
+
+body {
+  height: 100%;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.5;
+  background-color: var(--bg-primary);
+  color: var(--text-secondary);
+  
+  /* Melhora o renderizador de fontes para maior nitidez no Mac/Windows */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  overflow-x: hidden; /* Evita qualquer rolagem horizontal acidental */
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================================================
+   3. Estrutura Principal do Aplicativo (SPA Container)
+   ========================================================================== */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px; /* Limite Mobile-First para parecer um app nativo no Desktop */
+  height: 100%;
+  margin: 0 auto; /* Centraliza horizontalmente em telas grandes */
+  position: relative;
+  background-color: var(--bg-primary);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.8); /* Sombra elegante nas laterais em telas desktop */
+  overflow: hidden;
+}
+
+/* Responsividade: para telas muito grandes, podemos expandir um pouco,
+   mas manter a sensação de dispositivo móvel focado e super profissional */
+@media (min-width: 1024px) {
+  .app-container {
+    max-width: 1024px; /* Modo Tablet/Desktop expandido */
+  }
+}
+
+/* ==========================================================================
+   4. Estilo das Barras de Rolagem (Scrollbars Customizadas)
+   ========================================================================== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-color-focus);
+}
+
+/* ==========================================================================
+   5. Elementos de Mídia e Links Globais
+   ========================================================================== */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+}
+
+img, svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* ==========================================================================
+   6. Utilitários Globais e Auxiliares de Tipografia
+   ========================================================================== */
+.font-highlight {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+/* Efeito de fade-in suave para carregar as telas do SPA */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn var(--transition-normal);
+}

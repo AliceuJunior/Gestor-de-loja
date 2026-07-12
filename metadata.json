@@ -1,0 +1,6 @@
+{
+  "name": "Gestor da Loja",
+  "description": "Sistema simples e profissional para controle financeiro, focado em determinar o saldo disponível para retirada de forma segura.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

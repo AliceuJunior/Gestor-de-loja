@@ -1,0 +1,644 @@
+/* 
+  components.css
+  Este arquivo define os componentes de interface de usuário reutilizáveis do Gestor da Loja.
+  Tudo foi construído de forma modular para fácil manutenção e futura transição para componentes React.
+*/
+
+/* ==========================================================================
+   1. Cabeçalho Superior (App Header)
+   ========================================================================== */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: calc(var(--spacing-lg) + 8px) var(--spacing-md) var(--spacing-lg) var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-primary);
+  z-index: 10;
+}
+
+@media (min-width: 1024px) {
+  .app-header {
+    padding: var(--spacing-xl) var(--spacing-lg);
+  }
+}
+
+.header-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.header-brand {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+  margin-bottom: var(--spacing-xs);
+}
+
+.header-welcome {
+  font-size: 1.25rem;
+  font-weight: 300;
+  color: var(--text-secondary);
+}
+
+.header-welcome .font-highlight {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.header-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+/* ==========================================================================
+   2. Barra de Navegação Inferior (Bottom Nav - Estilo Flutuante)
+   ========================================================================== */
+.bottom-nav {
+  position: fixed;
+  bottom: var(--spacing-lg);
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - calc(var(--spacing-md) * 2));
+  max-width: 480px; /* Limita o tamanho em telas menores */
+  background-color: rgba(28, 28, 30, 0.85); /* Fundo translúcido */
+  backdrop-filter: var(--backdrop-blur);
+  -webkit-backdrop-filter: var(--backdrop-blur);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  padding: 0.5rem var(--spacing-sm);
+  display: grid;
+  grid-template-columns: repeat(7, 1fr); /* 7 slots: Painel, Serviços, Pedidos, Botão +, Mural, Despesas, Retiradas */
+  align-items: center;
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+}
+
+@media (min-width: 1024px) {
+  .bottom-nav {
+    max-width: 640px;
+    bottom: var(--spacing-xl);
+  }
+}
+
+.nav-item {
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  transition: color var(--transition-fast), transform var(--transition-fast);
+  padding: var(--spacing-xs) 0;
+}
+
+.nav-item:hover {
+  color: var(--text-primary);
+}
+
+.nav-item.active {
+  color: var(--color-primary);
+}
+
+.nav-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  transition: transform var(--transition-fast);
+}
+
+.nav-item.active .nav-icon {
+  transform: scale(1.1);
+}
+
+.nav-label {
+  font-size: 0.52rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+@media (min-width: 400px) {
+  .nav-label {
+    font-size: 0.58rem;
+    letter-spacing: 0.03em;
+  }
+}
+
+@media (min-width: 1024px) {
+  .nav-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+  }
+}
+
+/* ==========================================================================
+   3. Botão de Ação Rápida Central (+)
+   ========================================================================== */
+.quick-action-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  height: 100%;
+}
+
+.quick-action-button {
+  width: 3.25rem;
+  height: 3.25rem;
+  background: var(--color-primary);
+  border: 4px solid var(--bg-primary); /* Espaçador visual em relação à barra */
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  cursor: pointer;
+  box-shadow: var(--shadow-primary);
+  transform: translateY(-1.25rem); /* Flutua acima da navegação */
+  transition: transform var(--transition-normal), background-color var(--transition-fast), box-shadow var(--transition-fast);
+  z-index: 110;
+}
+
+.quick-action-button:hover {
+  transform: translateY(-1.4rem) scale(1.05);
+  background-color: var(--color-primary-hover);
+  box-shadow: 0 12px 28px rgba(157, 92, 255, 0.4);
+}
+
+.quick-action-button:active {
+  transform: translateY(-1.15rem) scale(0.95);
+}
+
+.quick-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* ==========================================================================
+   4. Botões de Ícone e Gerais
+   ========================================================================== */
+.icon-button {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.icon-button:hover {
+  background-color: var(--bg-input);
+  border-color: var(--border-color-focus);
+  color: var(--text-primary);
+}
+
+.icon-button .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  overflow: visible;
+}
+
+/* Botões Padrão de Formulário */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+  border: none;
+  gap: var(--spacing-sm);
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: var(--text-primary);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.btn-secondary {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.btn-secondary:hover {
+  background-color: var(--bg-input);
+  border-color: var(--border-color-focus);
+}
+
+/* ==========================================================================
+   5. Cartões e Boxes de Conteúdo (Cards)
+   ========================================================================== */
+.card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.card:hover {
+  border-color: var(--border-color-focus);
+}
+
+/* ==========================================================================
+   6. Badges / Emblemas de Status
+   ========================================================================== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-success {
+  background-color: var(--color-success-alpha);
+  color: var(--color-success);
+}
+
+.badge-danger {
+  background-color: var(--color-danger-alpha);
+  color: var(--color-danger);
+}
+
+/* ==========================================================================
+   7. Elementos de Formulário (Inputs, Labels)
+   ========================================================================== */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.form-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.input-field, .select-field {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.75rem var(--spacing-md);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  outline: none;
+}
+
+.input-field:focus, .select-field:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-alpha);
+}
+
+/* Placeholder do sistema */
+.loading-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-style: italic;
+  padding: var(--spacing-xl);
+}
+
+/* ==========================================================================
+   8. Componente de Modal Reutilizável
+   ========================================================================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(10, 10, 12, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md);
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-normal) ease-in-out;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-container {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  transform: translateY(20px) scale(0.95);
+  transition: transform var(--transition-normal) cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-overlay.active .modal-container {
+  transform: translateY(0) scale(1);
+}
+
+.modal-header {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.modal-close:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-input);
+}
+
+.modal-body {
+  padding: var(--spacing-lg);
+  overflow-y: auto;
+}
+
+.modal-footer {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* ==========================================================================
+   9. Componente de Toasts (Notificações Dinâmicas)
+   ========================================================================== */
+.toast-container {
+  position: fixed;
+  top: var(--spacing-md);
+  right: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  z-index: 2000;
+  pointer-events: none;
+}
+
+.toast {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--text-muted);
+  border-radius: var(--radius-md);
+  padding: 0.85rem var(--spacing-lg);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  pointer-events: auto;
+  transform: translateX(120%);
+  transition: transform var(--transition-normal) cubic-bezier(0.16, 1, 0.3, 1), opacity var(--transition-normal);
+  opacity: 0;
+  max-width: 320px;
+}
+
+.toast.active {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.toast-success {
+  border-left-color: var(--color-success);
+}
+
+.toast-danger {
+  border-left-color: var(--color-danger);
+}
+
+.toast-info {
+  border-left-color: var(--color-primary);
+}
+
+.toast-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
+}
+
+/* Variante Danger para Botões */
+.btn-danger {
+  background-color: var(--color-danger-alpha);
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
+}
+
+.btn-danger:hover {
+  background-color: var(--color-danger);
+  color: var(--text-primary);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Emblema/Botão de Informação ("i") */
+.info-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-muted);
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.info-badge:hover {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #000;
+  transform: scale(1.1);
+}
+
+/* ==========================================================================
+   5. Sidebar Drawer Lateral (Menu de Utilidades Completo)
+   ========================================================================== */
+.sidebar-drawer {
+  position: fixed;
+  top: 0;
+  left: -280px; /* Escondido inicialmente */
+  width: 280px;
+  height: 100%;
+  background-color: var(--bg-tertiary);
+  border-right: 1px solid var(--border-color);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  transition: left var(--transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-drawer.open {
+  left: 0;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-brand {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-primary);
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-md) var(--spacing-sm);
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: left;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  width: 100%;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.sidebar-nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+}
+
+.sidebar-nav-item.active {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.sidebar-icon {
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.sidebar-label {
+  flex: 1;
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 999;
+  transition: opacity var(--transition-normal) ease;
+}
+
+.sidebar-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}

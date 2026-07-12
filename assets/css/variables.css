@@ -1,0 +1,83 @@
+/* 
+  variables.css
+  Este arquivo centraliza todos os tokens de design do Gestor da Loja.
+  Utiliza o tema "Sophisticated Dark", inspirado no Nubank, Mercado Pago e Notion,
+  garantindo consistência visual, fácil manutenção e futura migração simplificada para React.
+*/
+
+:root {
+  /* ==========================================================================
+     1. Paleta de Cores (Aesthetic Sophisticated Dark)
+     ========================================================================== */
+  --bg-primary: #0A0A0B;          /* Fundo principal do app (Preto profundo) */
+  --bg-secondary: #1C1C1E;        /* Fundo dos cartões padrão, inputs e menus */
+  --bg-tertiary: #141417;         /* Fundo de destaque para o Hero central */
+  --bg-input: #2C2C2E;            /* Fundo para elementos de formulário */
+  
+  /* Cores de Destaque e Identidade */
+  --color-primary: #9D5CFF;       /* Roxo vibrante moderno (Identidade principal) */
+  --color-primary-hover: #AF7BFF; /* Roxo ligeiramente mais claro para estados hover */
+  --color-primary-alpha: rgba(157, 92, 255, 0.15); /* Roxo translúcido para fundos de badges */
+  
+  /* Indicadores Financeiros / Status */
+  --color-success: #23C55E;       /* Verde vibrante para Lucro, Entrada e Operações Seguras */
+  --color-success-hover: #2ED16A;
+  --color-success-alpha: rgba(35, 197, 94, 0.1);
+  
+  --color-danger: #FF453A;        /* Vermelho para Despesas, Reservas e Alertas */
+  --color-danger-hover: #FF5B52;
+  --color-danger-alpha: rgba(255, 69, 58, 0.1);
+  
+  /* Bordas e Divisores */
+  --border-color: #2C2C2E;        /* Linhas divisórias sutis e elegantes */
+  --border-color-focus: #48484A;  /* Borda destacada em foco */
+
+  /* Cores de Texto */
+  --text-primary: #FFFFFF;        /* Alto contraste para títulos importantes e destaques */
+  --text-secondary: #E0E0E0;      /* Texto padrão altamente legível */
+  --text-muted: #8E9299;          /* Subtítulos, rótulos e metadados secundários */
+
+  /* ==========================================================================
+     2. Tipografia e Escala de Fontes
+     ========================================================================== */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", SFMono-Regular, Consolas, monospace;
+
+  /* ==========================================================================
+     3. Espaçamentos (Base de 8px / Grid System)
+     ========================================================================== */
+  --spacing-xs: 0.25rem;  /* 4px  - Micro-ajustes de ícones/textos */
+  --spacing-sm: 0.5rem;   /* 8px  - Espaçamentos internos pequenos */
+  --spacing-md: 1rem;     /* 16px - Padding padrão de cards e botões */
+  --spacing-lg: 1.5rem;   /* 24px - Espaçamento entre seções e cards */
+  --spacing-xl: 2rem;     /* 32px - Padding interno do Hero central e headers */
+  --spacing-xxl: 2.5rem;  /* 40px - Margens de layout superiores */
+
+  /* ==========================================================================
+     4. Bordas e Arredondamento (Layout Orgânico e Moderno)
+     ========================================================================== */
+  --radius-sm: 8px;       /* Tags, badges, mini-botões */
+  --radius-md: 16px;      /* Botões padrão, inputs e mini-cards */
+  --radius-lg: 24px;      /* Cartões padrão do grid, modais menores */
+  --radius-xl: 32px;      /* Hero central de retirada e modais principais */
+  --radius-full: 9999px;  /* Botões circulares, barra de navegação flutuante */
+
+  /* ==========================================================================
+     5. Sombras e Efeitos Visuais
+     ========================================================================== */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 8px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.6);
+  --shadow-primary: 0 8px 24px rgba(157, 92, 255, 0.25); /* Glow roxo suave */
+  
+  /* Filtros de Desfoque para Efeito Frosted Glass (Navegação Flutuante) */
+  --backdrop-blur: blur(20px);
+
+  /* ==========================================================================
+     6. Transições e Animações
+     ========================================================================== */
+  --transition-fast: 0.15s ease-in-out;
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}

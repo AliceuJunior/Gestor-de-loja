@@ -1,15 +1,24 @@
-# fly.toml file para deploy no Fly.io
-app = "gestor-da-loja" # SUBSTITUA pelo nome exato do seu app criado no Fly.io (use apenas letras minúsculas, números e hífens)
+# fly.toml app configuration file generated for gestor-de-loja on 2026-07-13T02:14:55Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-primary_region = "gru" # Configurado para São Paulo (Brasil) por padrão
+app = 'gestor-de-loja'
+primary_region = 'ams'
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = 'Dockerfile'
 
 [http_service]
-  internal_port = 3000
+  internal_port = 8080
   force_https = true
-  auto_stop_machines = "stop"
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
-  processes = ["app"]
+  processes = ['app']
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 256

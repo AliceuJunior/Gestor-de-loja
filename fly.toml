@@ -1,50 +1,15 @@
-Hi, I'm trying to fix my Fly.io deployment. There's a build error on my Dockerfile.
+# fly.toml file para deploy no Fly.io
+app = "gestor-da-loja" # SUBSTITUA pelo nome exato do seu app no Fly.io
 
-Please fix my Dockerfile for me to the best of your ability. And give me the updated version so I can paste in Fly.io web deployment UI.
-
-Error logs:
-
-```
-flyctl deploy --build-only --push -a gestor-de-loja --image-label deployment-0e0f20d7dea0d37f9eb5e4000b76e2c7 --config fly.toml
-==> Verifying app config
-Validating fly.toml
-[32m✓[0m Configuration is valid
---> Verified app config
-==> Building image
-==> Building image
-Error: failed to fetch an image or build from source: dockerfile '/usr/src/app/Dockerfile' not found
-Dockerfile failed to build error
-unsuccessful command 'flyctl deploy --build-only --push -a gestor-de-loja --image-label deployment-0e0f20d7dea0d37f9eb5e4000b76e2c7 --config fly.toml'
-```
-
-fly.toml
-
-
-```
-# fly.toml app configuration file generated for gestor-de-loja on 2026-07-13T02:19:16Z
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
-
-app = 'gestor-de-loja'
-primary_region = 'gru'
+primary_region = "gru" # Configurado para São Paulo (Brasil) por padrão
 
 [build]
-  dockerfile = 'Dockerfile'
+  dockerfile = "Dockerfile"
 
 [http_service]
-  internal_port = 8080
+  internal_port = 3000
   force_https = true
-  auto_stop_machines = 'stop'
+  auto_stop_machines = "stop"
   auto_start_machines = true
   min_machines_running = 0
-  processes = ['app']
-
-[[vm]]
-  memory = '1gb'
-  cpu_kind = 'shared'
-  cpus = 1
-  memory_mb = 256
-
-```
-
+  processes = ["app"]

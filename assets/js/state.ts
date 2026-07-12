@@ -157,7 +157,7 @@ export function salvarAvisosLixeira(): void {
 export const contasPagBankMock: ContaPagBank[] = JSON.parse(localStorage.getItem('gestor_contas_pagbank') || '[]');
 if (contasPagBankMock.length === 0) {
   const initialContas: ContaPagBank[] = [
-    { id: "C-1", nomeOuCnpj: "Conta PagBank Principal", valor: 0.00, ativa: true }
+    { id: "C-1", nomeOuCnpj: "Conta PagBank Principal", valor: 16000.00, ativa: true }
   ];
   contasPagBankMock.push(...initialContas);
   localStorage.setItem('gestor_contas_pagbank', JSON.stringify(contasPagBankMock));
@@ -347,6 +347,230 @@ export function recalcularDadosDashboard(): void {
 }
 
 // Executa o cálculo inicial das métricas com base no localStorage
+// Executa o cálculo inicial das métricas com base no localStorage
+export function carregarDadosDemonstracao(): void {
+  const hoje = new Date().toISOString().split('T')[0];
+  const hojeMenos1 = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const hojeMenos3 = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const hojeMenos5 = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const hojeMenos10 = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  const demoContas = [
+    { id: "C-1", nomeOuCnpj: "Conta PagBank Principal - CNPJ", valor: 8500.00, ativa: true },
+    { id: "C-2", nomeOuCnpj: "Conta PagBank Secundária", valor: 3200.00, ativa: true },
+    { id: "C-3", nomeOuCnpj: "Reserva de Emergência Extra", valor: 5000.00, ativa: false }
+  ];
+
+  const demoManutencoes = [
+    {
+      id: "M-" + Date.now() + "1",
+      os: "1001",
+      data: hojeMenos5,
+      cliente: "Carlos Souza",
+      aparelho: "iPhone 11",
+      marca: "Apple",
+      modelo: "iPhone 11 64GB",
+      cor: "Preto",
+      situacao: "Pronto / Entregue",
+      valorCobrado: 450.00,
+      valorPeca: 180.00,
+      pagoPeloCliente: true,
+      pecaPaga: true,
+      criadoPor: "Sócio J."
+    },
+    {
+      id: "M-" + Date.now() + "2",
+      os: "1002",
+      data: hoje,
+      cliente: "Juliana Lima",
+      aparelho: "Moto G60 Azul",
+      marca: "Motorola",
+      modelo: "Moto G60",
+      cor: "Azul",
+      situacao: "Em Bancada",
+      valorCobrado: 250.00,
+      valorPeca: 90.00,
+      pagoPeloCliente: false,
+      pecaPaga: true,
+      criadoPor: "Sócio S."
+    },
+    {
+      id: "M-" + Date.now() + "3",
+      os: "1003",
+      data: hojeMenos1,
+      cliente: "Roberto Alves",
+      aparelho: "Samsung S20 FE",
+      marca: "Samsung",
+      modelo: "S20 FE",
+      cor: "Nuvem Branca",
+      situacao: "Aguardando Peça",
+      valorCobrado: 650.00,
+      valorPeca: 280.00,
+      pagoPeloCliente: false,
+      pecaPaga: false,
+      criadoPor: "Sócio J."
+    },
+    {
+      id: "M-" + Date.now() + "4",
+      os: "1004",
+      data: hojeMenos3,
+      cliente: "Fernanda Costa",
+      aparelho: "iPhone 12",
+      marca: "Apple",
+      modelo: "iPhone 12 128GB",
+      cor: "Branco",
+      situacao: "Pronto / Entregue",
+      valorCobrado: 580.00,
+      valorPeca: 220.00,
+      pagoPeloCliente: true,
+      pecaPaga: true,
+      criadoPor: "Sócio S."
+    }
+  ];
+
+  const demoVendas = [
+    {
+      id: "V-" + Date.now() + "1",
+      data: hoje,
+      observacao: "2 Películas 3D + 1 Capinha iPhone 13",
+      debito: 0.00,
+      credito: 0.00,
+      pix: 110.00,
+      dinheiro: 0.00,
+      total: 110.00,
+      criadoPor: "Sócio S."
+    },
+    {
+      id: "V-" + Date.now() + "2",
+      data: hojeMenos1,
+      observacao: "Carregador Rápido Tipo-C Original",
+      debito: 0.00,
+      credito: 0.00,
+      pix: 0.00,
+      dinheiro: 90.00,
+      total: 90.00,
+      criadoPor: "Sócio J."
+    },
+    {
+      id: "V-" + Date.now() + "3",
+      data: hojeMenos3,
+      observacao: "Fone de Ouvido Bluetooth JBL",
+      debito: 0.00,
+      credito: 180.00,
+      pix: 0.00,
+      dinheiro: 0.00,
+      total: 180.00,
+      criadoPor: "Sócio S."
+    }
+  ];
+
+  const demoDespesas = [
+    {
+      id: "D-" + Date.now() + "1",
+      dataVencimento: hojeMenos10,
+      descricao: "Aluguel da Sala Comercial",
+      valor: 1200.00,
+      categoria: "Fixa",
+      tipo: "Fixa",
+      paga: true,
+      criadoPor: "Sócio J."
+    },
+    {
+      id: "D-" + Date.now() + "2",
+      dataVencimento: hoje,
+      descricao: "Conta de Energia (Enel)",
+      valor: 215.00,
+      categoria: "Fixa",
+      tipo: "Fixa",
+      paga: false,
+      criadoPor: "Sócio S."
+    },
+    {
+      id: "D-" + Date.now() + "3",
+      dataVencimento: hojeMenos1,
+      descricao: "Café e Copos Descartáveis",
+      valor: 45.00,
+      categoria: "Geral",
+      tipo: "Pontual",
+      paga: true,
+      criadoPor: "Sócio J."
+    }
+  ];
+
+  const demoRetiradas = [
+    {
+      id: "R-" + Date.now() + "1",
+      data: hojeMenos10,
+      socio: "Sócio S.",
+      valor: 2000.00,
+      observacao: "Retirada pró-labore mensal",
+      formaPagamento: "Conta PagBank",
+      criadoPor: "Sócio S."
+    },
+    {
+      id: "R-" + Date.now() + "2",
+      data: hojeMenos5,
+      socio: "Sócio J.",
+      valor: 1500.00,
+      observacao: "Retirada adiantamento",
+      formaPagamento: "Conta PagBank",
+      criadoPor: "Sócio J."
+    }
+  ];
+
+  const demoAvisos = [
+    {
+      id: "A-" + Date.now() + "1",
+      titulo: "⚠️ Aparelhos abandonados ou sem retorno",
+      conteudo: "Aparelhos deixados por mais de 90 dias sem retorno do cliente podem ser reciclados ou vendidos para sucata/peças, conforme o termo da nossa OS. Sempre mande mensagem avisando antes no WhatsApp.",
+      categoria: "procedimento",
+      data: hojeMenos10,
+      autor: "Admin",
+      urgente: false
+    },
+    {
+      id: "A-" + Date.now() + "2",
+      titulo: "🔌 Regra de Fechamento da Bancada",
+      conteudo: "Ao fechar a loja à noite, conferir 2x se todos os ferros de solda, fontes de bancada, separadoras de tela e lâmpadas UV foram totalmente desligados das tomadas para evitar acidentes.",
+      categoria: "procedimento",
+      data: hoje,
+      autor: "Admin",
+      urgente: true
+    }
+  ];
+
+  const demoHistoricoCompras = [
+    { id: "H-" + Date.now() + "1", mesOuData: "Março", valor: 6800.00, tipo: "quinzenal" },
+    { id: "H-" + Date.now() + "2", mesOuData: "Abril", valor: 7200.00, tipo: "quinzenal" },
+    { id: "H-" + Date.now() + "3", mesOuData: "Maio", valor: 6500.00, tipo: "quinzenal" },
+    { id: "H-" + Date.now() + "4", mesOuData: "Junho", valor: 7500.00, tipo: "quinzenal" }
+  ];
+
+  localStorage.setItem('gestor_contas_pagbank', JSON.stringify(demoContas));
+  localStorage.setItem('gestor_saldo_caixa_fisico', '450.00');
+  localStorage.setItem('gestor_manutencoes', JSON.stringify(demoManutencoes));
+  localStorage.setItem('gestor_vendas', JSON.stringify(demoVendas));
+  localStorage.setItem('gestor_despesas', JSON.stringify(demoDespesas));
+  localStorage.setItem('gestor_retiradas', JSON.stringify(demoRetiradas));
+  localStorage.setItem('gestor_avisos', JSON.stringify(demoAvisos));
+  localStorage.setItem('gestor_historico_compras', JSON.stringify(demoHistoricoCompras));
+  localStorage.setItem('gestor_reserva_minima', '2500.00');
+  localStorage.setItem('gestor_despesas_fixas_estimadas', '1350.00');
+  localStorage.setItem('gestor_margem_lucro_vendas', '40.0');
+  localStorage.setItem('gestor_compra_reposicao_ativa', 'true');
+  localStorage.setItem('gestor_compra_reposicao_valor', '7000.00');
+  localStorage.setItem('gestor_meta_faturamento', '15000.00');
+
+  // Adiciona a próxima segunda-feira como padrão
+  const proximaSegunda = new Date();
+  const diaSemana = proximaSegunda.getDay();
+  const diasAteSegunda = diaSemana === 1 ? 7 : (8 - diaSemana) % 7;
+  proximaSegunda.setDate(proximaSegunda.getDate() + diasAteSegunda);
+  localStorage.setItem('gestor_compra_reposicao_proxima_data', proximaSegunda.toISOString().split('T')[0]);
+
+  window.location.reload();
+}
+
 export function zerarTodosOsDados(): void {
   const keys = [
     'gestor_manutencoes',
@@ -375,6 +599,7 @@ recalcularDadosDashboard();
 // Expõe no escopo global
 (window as any).recalcularDadosDashboard = recalcularDadosDashboard;
 (window as any).zerarTodosOsDados = zerarTodosOsDados;
+(window as any).carregarDadosDemonstracao = carregarDadosDemonstracao;
 (window as any).configInicial = configInicial;
 (window as any).dadosDashboardMock = dadosDashboardMock;
 (window as any).vendasMock = vendasMock;

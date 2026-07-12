@@ -363,7 +363,7 @@ export function obterListItemsHTMLFiltrado(): string {
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--spacing-xs); padding-top: var(--spacing-xs);">
             <div style="display: flex; gap: var(--spacing-xs);">
               <span class="badge ${item.pagoPeloCliente ? 'badge-success' : 'badge-danger'}" style="font-size: 0.6rem;">
-                ${item.pagoPeloCliente ? 'Cliente Pago' : 'Pendente Retirada'}
+                ${item.pagoPeloCliente ? 'Recebido (Serviço Pago)' : 'Pendente de Recebimento'}
               </span>
               <span class="badge ${item.pecaPaga ? 'badge-success' : 'badge-danger'}" style="font-size: 0.6rem;">
                 ${item.pecaPaga ? 'Peça Paga' : 'Peça Pendente'}
@@ -593,9 +593,113 @@ function calcularGarantia(dataStr: string, dias: number): string {
   return d.toISOString().split('T')[0];
 }
 
+export function obterProximoNumeroOS(): number {
+  if (!manutencoesMock || manutencoesMock.length === 0) {
+    return 1;
+  }
+  let maxOS = 0;
+  manutencoesMock.forEach(m => {
+    const num = parseInt(m.os, 10);
+    if (!isNaN(num) && num > maxOS) {
+      maxOS = num;
+    }
+  });
+  return maxOS + 1;
+}
+(window as any).obterProximoNumeroOS = obterProximoNumeroOS;
+
+export function recalcularMaoDeObraCadastro(): void {
+  const cobradoInput = document.getElementById('input-os-cobrado') as HTMLInputElement;
+  const pecaInput = document.getElementById('input-os-peca') as HTMLInputElement;
+  const maoInput = document.getElementById('input-os-mao') as HTMLInputElement;
+  
+  if (!cobradoInput || !pecaInput || !maoInput) return;
+  
+  const cobrado = parseFloat(cobradoInput.value) || 0;
+  const peca = parseFloat(pecaInput.value) || 0;
+  const mao = cobrado - (peca * 2);
+  
+  maoInput.placeholder = `Est: R$ ${mao.toFixed(2)}`;
+  
+  const spanCobrado = document.getElementById('span-calc-cobrado');
+  const spanLucro = document.getElementById('span-calc-lucro');
+  const lucro = cobrado - peca;
+  
+  if (spanCobrado) spanCobrado.textContent = cobrado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  if (spanLucro) spanLucro.textContent = lucro.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+(window as any).recalcularMaoDeObraCadastro = recalcularMaoDeObraCadastro;
+
+export function recalcularTotalCadastro(): void {
+  const cobradoInput = document.getElementById('input-os-cobrado') as HTMLInputElement;
+  const pecaInput = document.getElementById('input-os-peca') as HTMLInputElement;
+  const maoInput = document.getElementById('input-os-mao') as HTMLInputElement;
+  
+  if (!cobradoInput || !pecaInput || !maoInput) return;
+  
+  const mao = parseFloat(maoInput.value) || 0;
+  const peca = parseFloat(pecaInput.value) || 0;
+  const cobrado = mao + (peca * 2);
+  
+  cobradoInput.value = cobrado.toFixed(2);
+  
+  const spanCobrado = document.getElementById('span-calc-cobrado');
+  const spanLucro = document.getElementById('span-calc-lucro');
+  const lucro = cobrado - peca;
+  
+  if (spanCobrado) spanCobrado.textContent = cobrado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  if (spanLucro) spanLucro.textContent = lucro.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+(window as any).recalcularTotalCadastro = recalcularTotalCadastro;
+
+export function recalcularMaoDeObraEditar(): void {
+  const cobradoInput = document.getElementById('edit-os-cobrado') as HTMLInputElement;
+  const pecaInput = document.getElementById('edit-os-peca') as HTMLInputElement;
+  const maoInput = document.getElementById('edit-os-mao') as HTMLInputElement;
+  
+  if (!cobradoInput || !pecaInput || !maoInput) return;
+  
+  const cobrado = parseFloat(cobradoInput.value) || 0;
+  const peca = parseFloat(pecaInput.value) || 0;
+  const mao = cobrado - (peca * 2);
+  
+  maoInput.placeholder = `Est: R$ ${mao.toFixed(2)}`;
+  
+  const spanCobrado = document.getElementById('span-edit-cobrado');
+  const spanLucro = document.getElementById('span-edit-lucro');
+  const lucro = cobrado - peca;
+  
+  if (spanCobrado) spanCobrado.textContent = cobrado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  if (spanLucro) spanLucro.textContent = lucro.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+(window as any).recalcularMaoDeObraEditar = recalcularMaoDeObraEditar;
+
+export function recalcularTotalEditar(): void {
+  const cobradoInput = document.getElementById('edit-os-cobrado') as HTMLInputElement;
+  const pecaInput = document.getElementById('edit-os-peca') as HTMLInputElement;
+  const maoInput = document.getElementById('edit-os-mao') as HTMLInputElement;
+  
+  if (!cobradoInput || !pecaInput || !maoInput) return;
+  
+  const mao = parseFloat(maoInput.value) || 0;
+  const peca = parseFloat(pecaInput.value) || 0;
+  const cobrado = mao + (peca * 2);
+  
+  cobradoInput.value = cobrado.toFixed(2);
+  
+  const spanCobrado = document.getElementById('span-edit-cobrado');
+  const spanLucro = document.getElementById('span-edit-lucro');
+  const lucro = cobrado - peca;
+  
+  if (spanCobrado) spanCobrado.textContent = cobrado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  if (spanLucro) spanLucro.textContent = lucro.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+(window as any).recalcularTotalEditar = recalcularTotalEditar;
+
 // 1. Cadastrar Novo Serviço Técnico
 export function abrirModalCadastroServico(): void {
   const dataHoje = new Date().toISOString().split('T')[0];
+  const proximaOS = obterProximoNumeroOS();
 
   UI.abrirModal(
     "Registrar Serviço Técnico (O.S.)",
@@ -604,7 +708,7 @@ export function abrirModalCadastroServico(): void {
         <div style="display: grid; grid-template-columns: 1fr 2fr; gap: var(--spacing-sm);">
           <div class="form-group">
             <label class="form-label" for="input-os-numero">Nº O.S.</label>
-            <input type="text" id="input-os-numero" class="input-field" placeholder="Ex: 4504" required />
+            <input type="text" id="input-os-numero" class="input-field" value="${proximaOS}" placeholder="Ex: 1" required />
           </div>
           <div class="form-group">
             <label class="form-label" for="input-os-cliente">Cliente</label>
@@ -648,22 +752,20 @@ export function abrirModalCadastroServico(): void {
         </div>
 
         <!-- Inputs de Precificação com Auto-Cálculo Conforme Fórmula -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-sm); background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: var(--spacing-sm); border-radius: var(--radius-sm);" oninput="
-          const peca = parseFloat((document.getElementById('input-os-peca') as HTMLInputElement).value) || 0;
-          const mao = parseFloat((document.getElementById('input-os-mao') as HTMLInputElement).value) || 0;
-          const cobrado = (peca * 2) + mao;
-          const lucro = peca + mao;
-          (document.getElementById('input-os-cobrado') as HTMLInputElement).value = cobrado.toFixed(2);
-          document.getElementById('span-calc-cobrado').textContent = cobrado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-          document.getElementById('span-calc-lucro').textContent = lucro.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        ">
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label" for="input-os-peca">Custo da Peça (R$)</label>
-            <input type="number" id="input-os-peca" class="input-field" placeholder="0.00" step="0.01" min="0" value="0.00" required />
+        <div style="display: flex; flex-direction: column; gap: var(--spacing-xs); background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: var(--spacing-sm); border-radius: var(--radius-sm);">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-sm);">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" for="input-os-cobrado">Valor da Manutenção (Cobrado)</label>
+              <input type="number" id="input-os-cobrado" class="input-field" placeholder="0.00" step="0.01" min="0" value="0.00" oninput="recalcularMaoDeObraCadastro()" required />
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" for="input-os-peca">Valor da Peça (Custo)</label>
+              <input type="number" id="input-os-peca" class="input-field" placeholder="0.00" step="0.01" min="0" value="0.00" oninput="recalcularMaoDeObraCadastro()" required />
+            </div>
           </div>
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label" for="input-os-mao">Mão de Obra Livre (R$)</label>
-            <input type="number" id="input-os-mao" class="input-field" placeholder="0.00" step="0.01" min="0" value="0.00" required />
+            <label class="form-label" for="input-os-mao">Mão de Obra (Livre / Opcional)</label>
+            <input type="number" id="input-os-mao" class="input-field" placeholder="Calculado automaticamente" step="0.01" oninput="recalcularTotalCadastro()" />
           </div>
         </div>
 
@@ -672,9 +774,6 @@ export function abrirModalCadastroServico(): void {
           <span class="text-muted">Cobrado do Cliente: <strong id="span-calc-cobrado" style="color: var(--text-primary); font-family: var(--font-mono);">R$ 0,00</strong></span>
           <span style="color: var(--color-success); font-weight: bold;">Lucro Estimado: <span id="span-calc-lucro" style="font-family: var(--font-mono);">R$ 0,00</span></span>
         </div>
-
-        <!-- Campo oculto para envio do valor total cobrado -->
-        <input type="hidden" id="input-os-cobrado" value="0.00" />
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-sm);">
           <div class="form-group">
@@ -716,8 +815,11 @@ export function abrirModalCadastroServico(): void {
       const data = (document.getElementById('input-os-data') as HTMLInputElement).value;
       const situacao = (document.getElementById('input-os-situacao') as HTMLInputElement).value.trim();
       const valorPeca = parseFloat((document.getElementById('input-os-peca') as HTMLInputElement).value) || 0;
-      const maoDeObra = parseFloat((document.getElementById('input-os-mao') as HTMLInputElement).value) || 0;
       const valorCobrado = parseFloat((document.getElementById('input-os-cobrado') as HTMLInputElement).value) || 0;
+      
+      const maoInputVal = (document.getElementById('input-os-mao') as HTMLInputElement).value.trim();
+      const maoDeObra = maoInputVal === "" ? (valorCobrado - (valorPeca * 2)) : parseFloat(maoInputVal);
+
       const pagoPeloCliente = (document.getElementById('select-os-pago') as HTMLSelectElement).value === 'true';
       const pecaPaga = (document.getElementById('select-os-pecapaga') as HTMLSelectElement).value === 'true';
       const garantiaDias = parseInt((document.getElementById('input-os-garantia') as HTMLInputElement).value) || 90;
@@ -827,22 +929,20 @@ export function abrirModalEditarManutencao(id: string): void {
         </div>
 
         <!-- Inputs de Precificação com Auto-Cálculo -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-sm); background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: var(--spacing-sm); border-radius: var(--radius-sm);" oninput="
-          const peca = parseFloat((document.getElementById('edit-os-peca') as HTMLInputElement).value) || 0;
-          const mao = parseFloat((document.getElementById('edit-os-mao') as HTMLInputElement).value) || 0;
-          const cobrado = (peca * 2) + mao;
-          const lucro = peca + mao;
-          (document.getElementById('edit-os-cobrado') as HTMLInputElement).value = cobrado.toFixed(2);
-          document.getElementById('span-edit-cobrado').textContent = cobrado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-          document.getElementById('span-edit-lucro').textContent = lucro.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        ">
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label" for="edit-os-peca">Custo da Peça (R$)</label>
-            <input type="number" id="edit-os-peca" class="input-field" value="${item.valorPeca}" step="0.01" min="0" required />
+        <div style="display: flex; flex-direction: column; gap: var(--spacing-xs); background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: var(--spacing-sm); border-radius: var(--radius-sm);">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-sm);">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" for="edit-os-cobrado">Valor da Manutenção (Cobrado)</label>
+              <input type="number" id="edit-os-cobrado" class="input-field" value="${item.valorCobrado}" step="0.01" min="0" oninput="recalcularMaoDeObraEditar()" required />
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" for="edit-os-peca">Valor da Peça (Custo)</label>
+              <input type="number" id="edit-os-peca" class="input-field" value="${item.valorPeca}" step="0.01" min="0" oninput="recalcularMaoDeObraEditar()" required />
+            </div>
           </div>
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label" for="edit-os-mao">Mão de Obra Livre (R$)</label>
-            <input type="number" id="edit-os-mao" class="input-field" value="${item.maoDeObra}" step="0.01" min="0" required />
+            <label class="form-label" for="edit-os-mao">Mão de Obra (Livre / Opcional)</label>
+            <input type="number" id="edit-os-mao" class="input-field" value="${item.maoDeObra !== undefined && item.maoDeObra !== null ? item.maoDeObra : ''}" placeholder="Calculado automaticamente" step="0.01" oninput="recalcularTotalEditar()" />
           </div>
         </div>
 
@@ -851,9 +951,6 @@ export function abrirModalEditarManutencao(id: string): void {
           <span class="text-muted">Cobrado Cliente: <strong id="span-edit-cobrado" style="color: var(--text-primary); font-family: var(--font-mono);">${formatarMoeda(item.valorCobrado)}</strong></span>
           <span style="color: var(--color-success); font-weight: bold;">Lucro Estimado: <span id="span-edit-lucro" style="font-family: var(--font-mono);">${formatarMoeda(item.lucro)}</span></span>
         </div>
-
-        <!-- Campo oculto para envio do valor total cobrado -->
-        <input type="hidden" id="edit-os-cobrado" value="${item.valorCobrado}" />
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-sm);">
           <div class="form-group">
@@ -896,8 +993,11 @@ export function abrirModalEditarManutencao(id: string): void {
       item.data = (document.getElementById('edit-os-data') as HTMLInputElement).value;
       item.situacao = (document.getElementById('edit-os-situacao') as HTMLInputElement).value.trim();
       item.valorPeca = parseFloat((document.getElementById('edit-os-peca') as HTMLInputElement).value) || 0;
-      item.maoDeObra = parseFloat((document.getElementById('edit-os-mao') as HTMLInputElement).value) || 0;
       item.valorCobrado = parseFloat((document.getElementById('edit-os-cobrado') as HTMLInputElement).value) || 0;
+      
+      const maoInputVal = (document.getElementById('edit-os-mao') as HTMLInputElement).value.trim();
+      item.maoDeObra = maoInputVal === "" ? (item.valorCobrado - (item.valorPeca * 2)) : parseFloat(maoInputVal);
+
       item.pagoPeloCliente = (document.getElementById('select-edit-pago') as HTMLSelectElement).value === 'true';
       item.pecaPaga = (document.getElementById('select-edit-pecapaga') as HTMLSelectElement).value === 'true';
       const garantiaDias = parseInt((document.getElementById('edit-os-garantia') as HTMLInputElement).value) || 90;

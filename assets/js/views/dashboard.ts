@@ -7,6 +7,9 @@ import { formatarMoeda, UI } from '../ui.ts';
 import { 
   dadosDashboardMock, 
   vendasMock, 
+  manutencoesMock,
+  despesasMock,
+  retiradasMock,
   configInicial, 
   recalcularDadosDashboard, 
   paginaAtual,
@@ -318,11 +321,38 @@ export function renderizarDashboard(container: HTMLElement, data: DashboardData)
   const lucroLiquido = data.lucroLiquidoMes !== undefined ? data.lucroLiquidoMes : 0;
   const lucroPositivo = lucroLiquido >= 0;
 
+  const estaVazio = (manutencoesMock.length === 0 && vendasMock.length === 0 && despesasMock.length === 0 && retiradasMock.length === 0 && (data.saldoTotal === 0 || !data.saldoTotal));
+
   pageElement.innerHTML = `
     <div class="page-header-block">
       <h2 class="page-title">Painel de Controle</h2>
       <p class="page-subtitle">Acompanhe a saúde financeira da sua assistência em tempo real</p>
     </div>
+
+    ${estaVazio ? `
+      <!-- Banner de Boas-vindas para Sistema Limpo -->
+      <div class="demo-banner-card" style="background: rgba(168, 85, 247, 0.06); border: 1px solid rgba(168, 85, 247, 0.18); padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-md); display: flex; flex-direction: column; gap: var(--spacing-sm); box-sizing: border-box; width: 100%; text-align: left;">
+        <div style="display: flex; align-items: flex-start; gap: var(--spacing-sm);">
+          <span style="font-size: 1.5rem; line-height: 1.2;">👋</span>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #fff; font-family: var(--font-display);">Bem-vindo ao seu novo Gestor da Loja!</h3>
+            <p style="margin: 0; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.45;">
+              O sistema iniciou limpo e pronto para o cadastro das suas manutenções e vendas reais. Todos os seus dados são guardados de forma segura e 100% offline no próprio navegador (localStorage).
+            </p>
+          </div>
+        </div>
+        
+        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255,255,255,0.05); padding: var(--spacing-sm); border-radius: var(--radius-sm); font-size: 0.82rem; color: var(--text-muted); line-height: 1.4;">
+          💡 <strong>Dica de Demonstração:</strong> Quer testar e ver as previsões quinzenais, gráficos e a blindagem inteligente de caixa funcionando agora mesmo? Clique no botão abaixo para carregar dados fictícios realistas de exemplo. Você pode zerá-los quando quiser nas Configurações.
+        </div>
+        
+        <div style="display: flex; align-items: center; justify-content: flex-start; margin-top: 4px;">
+          <button class="btn btn-primary" onclick="window.carregarDadosDemonstracao()" style="background: linear-gradient(135deg, #a855f7 0%, #3b82f6 100%); border: none; color: #fff; padding: 10px 18px; font-weight: 600; cursor: pointer; border-radius: var(--radius-sm); font-size: 0.85rem; display: inline-flex; align-items: center; gap: 8px; transition: opacity var(--transition-fast);" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
+            <span>✨</span> Carregar Dados de Demonstração (Mocks)
+          </button>
+        </div>
+      </div>
+    ` : ''}
 
     <!-- Central Hero Metric: Saldo Disponível para Retirada -->
     <section class="hero-card">

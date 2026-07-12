@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Permite leitura e escrita para as coleções do sistema de gestão da loja
+    match /manutencoes/{document} {
+      allow read, write: if true;
+    }
+    match /vendas/{document} {
+      allow read, write: if true;
+    }
+    match /despesas/{document} {
+      allow read, write: if true;
+    }
+    match /retiradas/{document} {
+      allow read, write: if true;
+    }
+    match /pedidos_compra/{document} {
+      allow read, write: if true;
+    }
+    match /avisos/{document} {
+      allow read, write: if true;
+    }
+    match /contas_pagbank/{document} {
+      allow read, write: if true;
+    }
+    match /historico_compras/{document} {
+      allow read, write: if true;
+    }
+    match /configuracoes/{document} {
+      allow read, write: if true;
+    }
+    match /caixa/{document} {
+      allow read, write: if true;
+    }
+    
+    // Regra fallback para qualquer outro documento
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

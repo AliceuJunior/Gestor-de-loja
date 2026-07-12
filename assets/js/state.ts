@@ -5,6 +5,15 @@
 
 import { DashboardData, Manutencao, Despesa, Retirada, Venda, Configuracoes, Usuario, PedidoCompra, Aviso, ContaPagBank, RegistroGastoCompra } from './types.ts';
 
+const COL_MANUTENCOES = 'manutencoes';
+const COL_VENDAS = 'vendas';
+const COL_DESPESAS = 'despesas';
+const COL_RETIRADAS = 'retiradas';
+const COL_PEDIDOS_COMPRA = 'pedidos_compra';
+const COL_AVISOS = 'avisos';
+const COL_CONTAS_PAGBANK = 'contas_pagbank';
+const COL_HISTORICO_COMPRAS = 'historico_compras';
+
 // Helper para retornar a data da próxima segunda-feira útil
 function obterProximaSegundaFeira(): string {
   const hoje = new Date();
@@ -348,7 +357,7 @@ export function recalcularDadosDashboard(): void {
 
 // Executa o cálculo inicial das métricas com base no localStorage
 // Executa o cálculo inicial das métricas com base no localStorage
-export function carregarDadosDemonstracao(): void {
+export async function carregarDadosDemonstracao(): Promise<void> {
   const hoje = new Date().toISOString().split('T')[0];
   const hojeMenos1 = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const hojeMenos3 = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -561,17 +570,61 @@ export function carregarDadosDemonstracao(): void {
   localStorage.setItem('gestor_compra_reposicao_valor', '7000.00');
   localStorage.setItem('gestor_meta_faturamento', '15000.00');
 
-  // Adiciona a próxima segunda-feira como padrão
   const proximaSegunda = new Date();
   const diaSemana = proximaSegunda.getDay();
   const diasAteSegunda = diaSemana === 1 ? 7 : (8 - diaSemana) % 7;
   proximaSegunda.setDate(proximaSegunda.getDate() + diasAteSegunda);
   localStorage.setItem('gestor_compra_reposicao_proxima_data', proximaSegunda.toISOString().split('T')[0]);
 
+  try {
+    // Sincronizar dados de demonstração com o novo backend SQL
+    await fetch("/api/redefinir-dados", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        acao: "carregar_demonstracao",
+        dados: {
+          manutencoes: demoManutencoes,
+          vendas: demoVendas,
+          despesas: demoDespesas,
+          retiradas: demoRetiradas,
+          pedidos_compra: [],
+          avisos: demoAvisos,
+          contas_pagbank: demoContas,
+          historico_compras: demoHistoricoCompras
+        }
+      })
+    });
+    
+    // Configurações globais e caixa no backend
+    await fetch("/api/configuracoes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reservaMinima: 2500,
+        despesasFixasEstimadas: 1350,
+        margemLucroVendas: 40,
+        compraReposicaoValor: 7000,
+        compraReposicaoProximaData: proximaSegunda.toISOString().split('T')[0],
+        compraReposicaoAtiva: true,
+        metaFaturamento: 15000
+      })
+    });
+
+    await fetch("/api/caixa", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ saldo: 450.00 })
+    });
+
+  } catch (err) {
+    console.error("Erro ao sincronizar dados de demonstração com backend SQL:", err);
+  }
+
   window.location.reload();
 }
 
-export function zerarTodosOsDados(): void {
+export async function zerarTodosOsDados(): Promise<void> {
   const keys = [
     'gestor_manutencoes',
     'gestor_despesas',
@@ -590,9 +643,265 @@ export function zerarTodosOsDados(): void {
     'gestor_compra_reposicao_proxima_data',
     'gestor_meta_faturamento'
   ];
+
+  try {
+    await fetch("/api/redefinir-dados", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ acao: "limpar" })
+    });
+    
+    await fetch("/api/configuracoes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reservaMinima: 5000,
+        despesasFixasEstimadas: 3000,
+        margemLucroVendas: 40,
+        compraReposicaoValor: 7000,
+        compraReposicaoProximaData: "",
+        compraReposicaoAtiva: false,
+        metaFaturamento: 15000
+      })
+    });
+
+    await fetch("/api/caixa", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ saldo: 0 })
+    });
+  } catch (err) {
+    console.error("Erro ao zerar dados no backend SQL:", err);
+  }
+
   keys.forEach(k => localStorage.removeItem(k));
   window.location.reload();
 }
+
+// ==========================================================================
+// Engine de Sincronização Local-First com o Backend SQL Express
+// ==========================================================================
+export let isSyncingFromFirestore = false;
+export let sincronizacaoAtiva = true;
+
+async function sincronizarColecaoComLista(colecao: string, novaLista: any[]) {
+  if (isSyncingFromFirestore) return;
+  try {
+    console.log(`📡 [Sync] Sincronizando coleção '${colecao}' com backend SQL...`);
+    await fetch(`/api/sincronizar/${colecao}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lista: novaLista })
+    });
+  } catch (err) {
+    console.error(`❌ Erro ao sincronizar coleção ${colecao} com backend SQL:`, err);
+  }
+}
+
+// Monkey-patch de localStorage.setItem para interceptar todas as alterações e enviar ao Express
+const originalSetItem = localStorage.setItem;
+localStorage.setItem = function(key, value) {
+  originalSetItem.call(localStorage, key, value);
+
+  if (isSyncingFromFirestore) return;
+
+  try {
+    if (key === 'gestor_manutencoes') {
+      sincronizarColecaoComLista(COL_MANUTENCOES, JSON.parse(value));
+    } else if (key === 'gestor_vendas') {
+      sincronizarColecaoComLista(COL_VENDAS, JSON.parse(value));
+    } else if (key === 'gestor_despesas') {
+      sincronizarColecaoComLista(COL_DESPESAS, JSON.parse(value));
+    } else if (key === 'gestor_retiradas') {
+      sincronizarColecaoComLista(COL_RETIRADAS, JSON.parse(value));
+    } else if (key === 'gestor_pedidos_compra') {
+      sincronizarColecaoComLista(COL_PEDIDOS_COMPRA, JSON.parse(value));
+    } else if (key === 'gestor_avisos') {
+      sincronizarColecaoComLista(COL_AVISOS, JSON.parse(value));
+    } else if (key === 'gestor_contas_pagbank') {
+      sincronizarColecaoComLista(COL_CONTAS_PAGBANK, JSON.parse(value));
+    } else if (key === 'gestor_historico_compras') {
+      sincronizarColecaoComLista(COL_HISTORICO_COMPRAS, JSON.parse(value));
+    } else if (key === 'gestor_saldo_caixa_fisico') {
+      fetch("/api/caixa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ saldo: parseFloat(value) || 0 })
+      }).catch(err => console.error("Erro ao salvar caixa no backend:", err));
+    } else if ([
+      'gestor_reserva_minima',
+      'gestor_despesas_fixas_estimadas',
+      'gestor_margem_lucro_vendas',
+      'gestor_compra_reposicao_ativa',
+      'gestor_compra_reposicao_valor',
+      'gestor_compra_reposicao_proxima_data',
+      'gestor_meta_faturamento'
+    ].includes(key)) {
+      const configObj = {
+        reservaMinima: parseFloat(localStorage.getItem('gestor_reserva_minima') || '2500.00'),
+        despesasFixasEstimadas: parseFloat(localStorage.getItem('gestor_despesas_fixas_estimadas') || '1350.00'),
+        margemLucroVendas: parseFloat(localStorage.getItem('gestor_margem_lucro_vendas') || '40.0'),
+        compraReposicaoValor: parseFloat(localStorage.getItem('gestor_compra_reposicao_valor') || '7000.00'),
+        compraReposicaoProximaData: localStorage.getItem('gestor_compra_reposicao_proxima_data') || '',
+        compraReposicaoAtiva: localStorage.getItem('gestor_compra_reposicao_ativa') !== 'false',
+        metaFaturamento: parseFloat(localStorage.getItem('gestor_meta_faturamento') || '15000.00')
+      };
+      
+      fetch("/api/configuracoes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(configObj)
+      }).catch(err => console.error("Erro ao salvar configurações no backend:", err));
+    }
+  } catch (err) {
+    console.error(`❌ Erro no interceptador de localStorage para chave ${key}:`, err);
+  }
+};
+
+let sincronizacaoIniciada = false;
+
+export async function inicializarSincronizacaoNuvem(): Promise<void> {
+  if (sincronizacaoIniciada) return;
+  sincronizacaoIniciada = true;
+
+  console.log("🔄 [Sync] Inicializando carga de dados a partir do Backend SQL (Postgres/SQLite)...");
+
+  try {
+    isSyncingFromFirestore = true;
+
+    // 1. Manutenções
+    const resManutencoes = await fetch("/api/manutencoes");
+    if (resManutencoes.ok) {
+      const dados = await resManutencoes.json();
+      manutencoesMock.length = 0;
+      manutencoesMock.push(...dados);
+      localStorage.setItem('gestor_manutencoes', JSON.stringify(manutencoesMock));
+    }
+
+    // 2. Vendas
+    const resVendas = await fetch("/api/vendas");
+    if (resVendas.ok) {
+      const dados = await resVendas.json();
+      vendasMock.length = 0;
+      vendasMock.push(...dados);
+      localStorage.setItem('gestor_vendas', JSON.stringify(vendasMock));
+    }
+
+    // 3. Despesas
+    const resDespesas = await fetch("/api/despesas");
+    if (resDespesas.ok) {
+      const dados = await resDespesas.json();
+      despesasMock.length = 0;
+      despesasMock.push(...dados);
+      localStorage.setItem('gestor_despesas', JSON.stringify(despesasMock));
+    }
+
+    // 4. Retiradas
+    const resRetiradas = await fetch("/api/retiradas");
+    if (resRetiradas.ok) {
+      const dados = await resRetiradas.json();
+      retiradasMock.length = 0;
+      retiradasMock.push(...dados);
+      localStorage.setItem('gestor_retiradas', JSON.stringify(retiradasMock));
+    }
+
+    // 5. Pedidos de Compra
+    const resPedidos = await fetch("/api/pedidos_compra");
+    if (resPedidos.ok) {
+      const dados = await resPedidos.json();
+      pedidosCompraMock.length = 0;
+      pedidosCompraMock.push(...dados);
+      localStorage.setItem('gestor_pedidos_compra', JSON.stringify(pedidosCompraMock));
+    }
+
+    // 6. Avisos
+    const resAvisos = await fetch("/api/avisos");
+    if (resAvisos.ok) {
+      const dados = await resAvisos.json();
+      avisosMock.length = 0;
+      avisosMock.push(...dados);
+      localStorage.setItem('gestor_avisos', JSON.stringify(avisosMock));
+    }
+
+    // 7. Contas PagBank
+    const resContas = await fetch("/api/contas_pagbank");
+    if (resContas.ok) {
+      const dados = await resContas.json();
+      contasPagBankMock.length = 0;
+      contasPagBankMock.push(...dados);
+      localStorage.setItem('gestor_contas_pagbank', JSON.stringify(contasPagBankMock));
+    }
+
+    // 8. Histórico de Compras
+    const resHistorico = await fetch("/api/historico_compras");
+    if (resHistorico.ok) {
+      const dados = await resHistorico.json();
+      historicoComprasMock.length = 0;
+      historicoComprasMock.push(...dados);
+      localStorage.setItem('gestor_historico_compras', JSON.stringify(historicoComprasMock));
+    }
+
+    // 9. Configurações Globais
+    const resConfig = await fetch("/api/configuracoes");
+    if (resConfig.ok) {
+      const dadosConfig = await resConfig.json();
+      configInicial.reservaMinima = dadosConfig.reservaMinima !== undefined ? dadosConfig.reservaMinima : configInicial.reservaMinima;
+      configInicial.despesasFixasEstimadas = dadosConfig.despesasFixasEstimadas !== undefined ? dadosConfig.despesasFixasEstimadas : configInicial.despesasFixasEstimadas;
+      configInicial.margemLucroVendas = dadosConfig.margemLucroVendas !== undefined ? dadosConfig.margemLucroVendas : configInicial.margemLucroVendas;
+      configInicial.compraReposicaoAtiva = dadosConfig.compraReposicaoAtiva !== undefined ? dadosConfig.compraReposicaoAtiva : configInicial.compraReposicaoAtiva;
+      configInicial.compraReposicaoValor = dadosConfig.compraReposicaoValor !== undefined ? dadosConfig.compraReposicaoValor : configInicial.compraReposicaoValor;
+      configInicial.compraReposicaoProximaData = dadosConfig.compraReposicaoProximaData || configInicial.compraReposicaoProximaData;
+      configInicial.metaFaturamento = dadosConfig.metaFaturamento !== undefined ? dadosConfig.metaFaturamento : configInicial.metaFaturamento;
+
+      localStorage.setItem('gestor_reserva_minima', configInicial.reservaMinima.toString());
+      localStorage.setItem('gestor_despesas_fixas_estimadas', configInicial.despesasFixasEstimadas.toString());
+      localStorage.setItem('gestor_margem_lucro_vendas', configInicial.margemLucroVendas.toString());
+      localStorage.setItem('gestor_compra_reposicao_ativa', configInicial.compraReposicaoAtiva.toString());
+      localStorage.setItem('gestor_compra_reposicao_valor', configInicial.compraReposicaoValor.toString());
+      localStorage.setItem('gestor_compra_reposicao_proxima_data', configInicial.compraReposicaoProximaData);
+      localStorage.setItem('gestor_meta_faturamento', configInicial.metaFaturamento.toString());
+    }
+
+    // 10. Caixa Físico
+    const resCaixa = await fetch("/api/caixa");
+    if (resCaixa.ok) {
+      const dadosCaixa = await resCaixa.json();
+      if (dadosCaixa && dadosCaixa.saldo !== undefined) {
+        saldoCaixaFisico = dadosCaixa.saldo;
+        localStorage.setItem('gestor_saldo_caixa_fisico', saldoCaixaFisico.toString());
+      }
+    }
+
+    isSyncingFromFirestore = false;
+    recalcularDadosDashboard();
+    forçarAtualizacaoInterface();
+    console.log("✅ [Sync] Sincronização e carga inicial via API concluídas com sucesso!");
+  } catch (err) {
+    console.error("❌ Erro ao sincronizar dados com o backend SQL na inicialização:", err);
+    isSyncingFromFirestore = false;
+  }
+}
+
+// Auxiliar para re-renderizar a página de forma otimizada
+let timeoutRender: any = null;
+function forçarAtualizacaoInterface(): void {
+  if (!sincronizacaoAtiva) return;
+  if (timeoutRender) clearTimeout(timeoutRender);
+  timeoutRender = setTimeout(() => {
+    const nav = (window as any).navegarPara;
+    if (typeof nav === 'function') {
+      const pag = (window as any).paginaAtual || paginaAtual;
+      if (pag !== 'login') {
+        nav(pag, false);
+      }
+    }
+  }, 100);
+}
+
+// Inicializa a escuta em nuvem em segundo plano
+setTimeout(() => {
+  inicializarSincronizacaoNuvem();
+}, 200);
 
 recalcularDadosDashboard();
 

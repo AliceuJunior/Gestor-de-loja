@@ -1,16 +1,16 @@
-# fly.toml app configuration file generated for gestor-de-loja on 2026-07-13T02:37:02Z
+# fly.toml app configuration file generated for gestor-de-loja on 2026-07-14T15:19:39Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
 app = 'gestor-de-loja'
-primary_region = 'gru'
+primary_region = 'ams'
 
 [build]
   dockerfile = 'Dockerfile'
 
 [http_service]
-  internal_port = 3000
+  internal_port = 8080
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true

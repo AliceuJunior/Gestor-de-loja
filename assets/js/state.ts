@@ -278,16 +278,20 @@ export function recalcularDadosDashboard(): void {
   dadosDashboardMock.despesasMes = totalDespesas;
   dadosDashboardMock.despesasPendentes = totalDespesasPendentes;
 
-  // Lógica de cálculo de manutenção: Mão de obra e Lucro
+  // Lógica de cálculo de manutenção: Mão de obra e Lucro (Apenas serviços pagos contam como faturamento e lucro realizado)
   let totalLucroManutencoes = 0;
   let totalFaturamentoManutencoes = 0;
   manutencoesMock.forEach(m => {
-    const maoDeObra = m.valorCobrado - (m.valorPeca * 2);
-    const lucro = m.valorPeca + maoDeObra;
-    m.lucro = lucro;
-    m.maoDeObra = maoDeObra;
-    totalLucroManutencoes += lucro;
-    totalFaturamentoManutencoes += m.valorCobrado;
+    if (m.maoDeObra === undefined || m.maoDeObra === null) {
+      m.maoDeObra = m.valorCobrado - (m.valorPeca * 2);
+    }
+    if (m.lucro === undefined || m.lucro === null) {
+      m.lucro = m.valorCobrado - m.valorPeca;
+    }
+    if (m.pagoPeloCliente) {
+      totalLucroManutencoes += m.lucro;
+      totalFaturamentoManutencoes += m.valorCobrado;
+    }
   });
   dadosDashboardMock.lucroManutencoes = totalLucroManutencoes;
   dadosDashboardMock.faturamentoManutencoes = totalFaturamentoManutencoes;
@@ -760,11 +764,14 @@ localStorage.setItem = function(key, value) {
 
 let sincronizacaoIniciada = false;
 
-export async function inicializarSincronizacaoNuvem(): Promise<void> {
-  if (sincronizacaoIniciada) return;
-  sincronizacaoIniciada = true;
-
-  console.log("🔄 [Sync] Inicializando carga de dados a partir do Backend SQL (Postgres/SQLite)...");
+export async function inicializarSincronizacaoNuvem(silencioso = false): Promise<void> {
+  if (isSyncingFromFirestore) return;
+  
+  if (!silencioso) {
+    if (sincronizacaoIniciada) return;
+    sincronizacaoIniciada = true;
+    console.log("🔄 [Sync] Inicializando carga de dados a partir do Backend SQL...");
+  }
 
   try {
     isSyncingFromFirestore = true;
@@ -875,9 +882,11 @@ export async function inicializarSincronizacaoNuvem(): Promise<void> {
     isSyncingFromFirestore = false;
     recalcularDadosDashboard();
     forçarAtualizacaoInterface();
-    console.log("✅ [Sync] Sincronização e carga inicial via API concluídas com sucesso!");
+    if (!silencioso) {
+      console.log("✅ [Sync] Sincronização e carga inicial concluídas com sucesso!");
+    }
   } catch (err) {
-    console.error("❌ Erro ao sincronizar dados com o backend SQL na inicialização:", err);
+    console.error("❌ Erro ao sincronizar dados com o backend na inicialização/polling:", err);
     isSyncingFromFirestore = false;
   }
 }
@@ -892,7 +901,12 @@ function forçarAtualizacaoInterface(): void {
     if (typeof nav === 'function') {
       const pag = (window as any).paginaAtual || paginaAtual;
       if (pag !== 'login') {
-        nav(pag, false);
+        // Evita re-renderizar a página se o usuário estiver digitando ou se houver modal aberto
+        const modalAberto = document.querySelector('.modal') || document.querySelector('.modal-overlay') || document.querySelector('#modal-generic');
+        const digitando = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT');
+        if (!modalAberto && !digitando) {
+          nav(pag, false);
+        }
       }
     }
   }, 100);
@@ -900,8 +914,13 @@ function forçarAtualizacaoInterface(): void {
 
 // Inicializa a escuta em nuvem em segundo plano
 setTimeout(() => {
-  inicializarSincronizacaoNuvem();
+  inicializarSincronizacaoNuvem(false);
 }, 200);
+
+// Polling periódico em segundo plano a cada 10 segundos para manter múltiplos dispositivos em sincronia
+setInterval(() => {
+  inicializarSincronizacaoNuvem(true);
+}, 10000);
 
 recalcularDadosDashboard();
 

@@ -76,43 +76,7 @@ export function abrirModalEditarSaldoPagBank(): void {
               <input type="checkbox" id="new-account-ativa" checked style="cursor: pointer;" />
               <label for="new-account-ativa" style="font-size: 0.72rem; cursor: pointer; user-select: none;">Ativa</label>
             </div>
-            <button type="button" class="btn btn-primary" onclick="
-              const nInput = document.getElementById('new-account-nome');
-              const vInput = document.getElementById('new-account-valor');
-              const aInput = document.getElementById('new-account-ativa');
-              const nome = nInput.value.trim();
-              if(!nome) return;
-              const valor = parseFloat(vInput.value) || 0;
-              const id = 'C-' + Date.now();
-              const listDiv = document.getElementById('lista-contas-dinamica');
-              const newRow = document.createElement('div');
-              newRow.className = 'account-row';
-              newRow.setAttribute('data-id', id);
-              newRow.style.display = 'flex';
-              newRow.style.alignItems = 'center';
-              newRow.style.gap = 'var(--spacing-xs)';
-              newRow.style.paddingBottom = '6px';
-              newRow.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
-              newRow.innerHTML = \`
-                <div style='display: flex; flex-direction: column; gap: 2px; flex: 2; min-width: 0;'>
-                  <input type='text' class='account-nome-input input-field' value='\${nome.replace(/\\\\'/g, '&apos;')}' placeholder='Nome ou CNPJ' style='height: 2rem; font-size: 0.8rem; padding: 4px 8px; background: var(--bg-input);' required />
-                </div>
-                <div style='flex: 1.2; display: flex; align-items: center; gap: 2px;'>
-                  <span style='font-size: 0.8rem; color: var(--text-muted);'>R$</span>
-                  <input type='number' class='account-valor-input input-field' value='\${valor}' step='0.01' style='height: 2rem; font-size: 0.8rem; padding: 4px 8px; background: var(--bg-input);' required />
-                </div>
-                <div style='display: flex; align-items: center; gap: 4px; padding: 0 4px; flex-shrink: 0;'>
-                  <input type='checkbox' id='chk-active-\${id}' class='account-ativa-checkbox' \${aInput.checked ? 'checked' : ''} style='cursor: pointer; width: 0.9rem; height: 0.9rem;' />
-                  <label for='chk-active-\${id}' style='font-size: 0.72rem; cursor: pointer;'>Ativa</label>
-                </div>
-                <button type='button' onclick='this.parentElement.remove();' style='background: none; border: none; color: var(--color-danger); cursor: pointer; padding: 4px; font-size: 0.85rem;'>
-                  ❌
-                </button>
-              \`;
-              listDiv.appendChild(newRow);
-              nInput.value = '';
-              vInput.value = '';
-            " style="padding: 4px 8px; font-size: 0.75rem; height: 2rem; border-radius: var(--radius-sm); white-space: nowrap;">+ Add</button>
+            <button type="button" class="btn btn-primary" onclick="adicionarContaPagBankModal()" style="padding: 4px 8px; font-size: 0.75rem; height: 2rem; border-radius: var(--radius-sm); white-space: nowrap;">+ Add</button>
           </div>
         </div>
       </div>
@@ -165,6 +129,58 @@ export function abrirModalEditarSaldoPagBank(): void {
   );
 }
 (window as any).abrirModalEditarSaldoPagBank = abrirModalEditarSaldoPagBank;
+
+export function adicionarContaPagBankModal(): void {
+  const nInput = document.getElementById('new-account-nome') as HTMLInputElement;
+  const vInput = document.getElementById('new-account-valor') as HTMLInputElement;
+  const aInput = document.getElementById('new-account-ativa') as HTMLInputElement;
+  if (!nInput || !vInput || !aInput) return;
+
+  const nome = nInput.value.trim();
+  if (!nome) {
+    UI.mostrarToast('Por favor, informe o nome ou CNPJ da conta.', 'danger');
+    return;
+  }
+
+  const valor = parseFloat(vInput.value) || 0;
+  const ativa = aInput.checked;
+  const id = 'C-' + Date.now();
+
+  const listDiv = document.getElementById('lista-contas-dinamica');
+  if (listDiv) {
+    const newRow = document.createElement('div');
+    newRow.className = 'account-row';
+    newRow.setAttribute('data-id', id);
+    newRow.style.display = 'flex';
+    newRow.style.alignItems = 'center';
+    newRow.style.gap = 'var(--spacing-xs)';
+    newRow.style.paddingBottom = '6px';
+    newRow.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+    newRow.innerHTML = `
+      <div style="display: flex; flex-direction: column; gap: 2px; flex: 2; min-width: 0;">
+        <input type="text" class="account-nome-input input-field" value="${nome.replace(/"/g, '&quot;')}" placeholder="Nome ou CNPJ" style="height: 2rem; font-size: 0.8rem; padding: 4px 8px; background: var(--bg-input);" required />
+      </div>
+      <div style="flex: 1.2; display: flex; align-items: center; gap: 2px;">
+        <span style="font-size: 0.8rem; color: var(--text-muted);">R$</span>
+        <input type="number" class="account-valor-input input-field" value="${valor}" step="0.01" style="height: 2rem; font-size: 0.8rem; padding: 4px 8px; background: var(--bg-input);" required />
+      </div>
+      <div style="display: flex; align-items: center; gap: 4px; padding: 0 4px; flex-shrink: 0;">
+        <input type="checkbox" id="chk-active-${id}" class="account-ativa-checkbox" ${ativa ? 'checked' : ''} style="cursor: pointer; width: 0.9rem; height: 0.9rem;" />
+        <label for="chk-active-${id}" style="font-size: 0.72rem; cursor: pointer; user-select: none;">Ativa</label>
+      </div>
+      <button type="button" class="btn-delete-row" onclick="this.parentElement.remove();" style="background: none; border: none; color: var(--color-danger); cursor: pointer; padding: 4px; font-size: 0.85rem;" title="Remover conta">
+        ❌
+      </button>
+    `;
+    listDiv.appendChild(newRow);
+
+    // Clear inputs
+    nInput.value = '';
+    vInput.value = '';
+    aInput.checked = true;
+  }
+}
+(window as any).adicionarContaPagBankModal = adicionarContaPagBankModal;
 
 export function mostrarInformacaoCard(cardId: string): void {
   let titulo = "";
@@ -328,31 +344,6 @@ export function renderizarDashboard(container: HTMLElement, data: DashboardData)
       <h2 class="page-title">Painel de Controle</h2>
       <p class="page-subtitle">Acompanhe a saúde financeira da sua assistência em tempo real</p>
     </div>
-
-    ${estaVazio ? `
-      <!-- Banner de Boas-vindas para Sistema Limpo -->
-      <div class="demo-banner-card" style="background: rgba(168, 85, 247, 0.06); border: 1px solid rgba(168, 85, 247, 0.18); padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-md); display: flex; flex-direction: column; gap: var(--spacing-sm); box-sizing: border-box; width: 100%; text-align: left;">
-        <div style="display: flex; align-items: flex-start; gap: var(--spacing-sm);">
-          <span style="font-size: 1.5rem; line-height: 1.2;">👋</span>
-          <div style="display: flex; flex-direction: column; gap: 4px;">
-            <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #fff; font-family: var(--font-display);">Bem-vindo ao seu novo Gestor da Loja!</h3>
-            <p style="margin: 0; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.45;">
-              O sistema iniciou limpo e pronto para o cadastro das suas manutenções e vendas reais. Todos os seus dados são guardados de forma segura e 100% offline no próprio navegador (localStorage).
-            </p>
-          </div>
-        </div>
-        
-        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255,255,255,0.05); padding: var(--spacing-sm); border-radius: var(--radius-sm); font-size: 0.82rem; color: var(--text-muted); line-height: 1.4;">
-          💡 <strong>Dica de Demonstração:</strong> Quer testar e ver as previsões quinzenais, gráficos e a blindagem inteligente de caixa funcionando agora mesmo? Clique no botão abaixo para carregar dados fictícios realistas de exemplo. Você pode zerá-los quando quiser nas Configurações.
-        </div>
-        
-        <div style="display: flex; align-items: center; justify-content: flex-start; margin-top: 4px;">
-          <button class="btn btn-primary" onclick="window.carregarDadosDemonstracao()" style="background: linear-gradient(135deg, #a855f7 0%, #3b82f6 100%); border: none; color: #fff; padding: 10px 18px; font-weight: 600; cursor: pointer; border-radius: var(--radius-sm); font-size: 0.85rem; display: inline-flex; align-items: center; gap: 8px; transition: opacity var(--transition-fast);" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
-            <span>✨</span> Carregar Dados de Demonstração (Mocks)
-          </button>
-        </div>
-      </div>
-    ` : ''}
 
     <!-- Central Hero Metric: Saldo Disponível para Retirada -->
     <section class="hero-card">

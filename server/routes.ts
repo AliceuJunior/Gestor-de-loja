@@ -1,20 +1,21 @@
 import express from "express";
-import { db } from "./db.ts";
+import { collection, getDocs, doc, setDoc, deleteDoc, getDoc } from "firebase/firestore";
+import { firestoreDb } from "./firebase.ts";
 
 export const apiRouter = express.Router();
 
 // Middleware para decodificar JSON
 apiRouter.use(express.json());
 
-// Função utilitária para converter booleanos para 1/0 ao salvar
+// Função utilitária para converter booleanos para 1/0 se necessário
 function boolToInt(val: any): number {
   if (val === true || val === "true" || val === 1 || val === "1") return 1;
   return 0;
 }
 
-// Função utilitária para converter 1/0 para boolean ao retornar
+// Função utilitária para converter 1/0 ou string para boolean
 function intToBool(val: any): boolean {
-  return val === 1 || val === "1" || val === true;
+  return val === 1 || val === "1" || val === true || val === "true";
 }
 
 // ==========================================================================
@@ -22,13 +23,20 @@ function intToBool(val: any): boolean {
 // ==========================================================================
 apiRouter.get("/manutencoes", async (req, res) => {
   try {
-    const rows = await db.query("SELECT * FROM manutencoes ORDER BY id DESC");
-    const formatted = rows.map((r: any) => ({
-      ...r,
-      pagoPeloCliente: intToBool(r.pagopelocliente !== undefined ? r.pagopelocliente : r.pagoPeloCliente),
-      pecaPaga: intToBool(r.pecapaga !== undefined ? r.pecapaga : r.pecaPaga),
-    }));
-    res.json(formatted);
+    const querySnapshot = await getDocs(collection(firestoreDb, "manutencoes"));
+    const list: any[] = [];
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      list.push({
+        ...data,
+        id: docSnap.id,
+        pagoPeloCliente: intToBool(data.pagoPeloCliente),
+        pecaPaga: intToBool(data.pecaPaga),
+      });
+    });
+    // Ordenar por ID decrescente
+    list.sort((a, b) => b.id.localeCompare(a.id));
+    res.json(list);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -40,38 +48,8 @@ apiRouter.post("/manutencoes", async (req, res) => {
     if (!item.id) {
       return res.status(400).json({ error: "O campo id é obrigatório." });
     }
-
-    // Upsert genérico para Postgres / SQLite
-    const existing = await db.query("SELECT id FROM manutencoes WHERE id = $1", [item.id]);
-    if (existing.length > 0) {
-      await db.exec(
-        `UPDATE manutencoes SET 
-          os = $2, cliente = $3, aparelho = $4, marca = $5, modelo = $6, cor = $7, 
-          situacao = $8, valorPeca = $9, maoDeObra = $10, valorCobrado = $11, lucro = $12, 
-          pagoPeloCliente = $13, pecaPaga = $14, data = $15, garantiaAte = $16,
-          modificadoPor = $17, modificadoEm = $18
-         WHERE id = $1`,
-        [
-          item.id, item.os, item.cliente, item.aparelho, item.marca, item.modelo, item.cor,
-          item.situacao, item.valorPeca, item.maoDeObra, item.valorCobrado, item.lucro,
-          boolToInt(item.pagoPeloCliente), boolToInt(item.pecaPaga), item.data, item.garantiaAte,
-          item.modificadoPor, item.modificadoEm
-        ]
-      );
-    } else {
-      await db.exec(
-        `INSERT INTO manutencoes (
-          id, os, cliente, aparelho, marca, modelo, cor, situacao, valorPeca, maoDeObra, 
-          valorCobrado, lucro, pagoPeloCliente, pecaPaga, data, garantiaAte, criadoPor, criadoEm
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
-        [
-          item.id, item.os, item.cliente, item.aparelho, item.marca, item.modelo, item.cor,
-          item.situacao, item.valorPeca, item.maoDeObra, item.valorCobrado, item.lucro,
-          boolToInt(item.pagoPeloCliente), boolToInt(item.pecaPaga), item.data, item.garantiaAte,
-          item.criadoPor, item.criadoEm
-        ]
-      );
-    }
+    // Salvar no Firestore
+    await setDoc(doc(firestoreDb, "manutencoes", item.id), item);
     res.json({ success: true, id: item.id });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -80,7 +58,7 @@ apiRouter.post("/manutencoes", async (req, res) => {
 
 apiRouter.delete("/manutencoes/:id", async (req, res) => {
   try {
-    await db.exec("DELETE FROM manutencoes WHERE id = $1", [req.params.id]);
+    await deleteDoc(doc(firestoreDb, "manutencoes", req.params.id));
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -92,8 +70,13 @@ apiRouter.delete("/manutencoes/:id", async (req, res) => {
 // ==========================================================================
 apiRouter.get("/vendas", async (req, res) => {
   try {
-    const rows = await db.query("SELECT * FROM vendas ORDER BY id DESC");
-    res.json(rows);
+    const querySnapshot = await getDocs(collection(firestoreDb, "vendas"));
+    const list: any[] = [];
+    querySnapshot.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    list.sort((a, b) => b.id.localeCompare(a.id));
+    res.json(list);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -102,22 +85,10 @@ apiRouter.get("/vendas", async (req, res) => {
 apiRouter.post("/vendas", async (req, res) => {
   try {
     const item = req.body;
-    const existing = await db.query("SELECT id FROM vendas WHERE id = $1", [item.id]);
-    if (existing.length > 0) {
-      await db.exec(
-        `UPDATE vendas SET 
-          data = $2, debito = $3, credito = $4, pix = $5, dinheiro = $6, total = $7, 
-          observacao = $8, modificadoPor = $9, modificadoEm = $10
-         WHERE id = $1`,
-        [item.id, item.data, item.debito, item.credito, item.pix, item.dinheiro, item.total, item.observacao, item.modificadoPor, item.modificadoEm]
-      );
-    } else {
-      await db.exec(
-        `INSERT INTO vendas (id, data, debito, credito, pix, dinheiro, total, observacao, criadoPor, criadoEm) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-        [item.id, item.data, item.debito, item.credito, item.pix, item.dinheiro, item.total, item.observacao, item.criadoPor, item.criadoEm]
-      );
+    if (!item.id) {
+      return res.status(400).json({ error: "O campo id é obrigatório." });
     }
+    await setDoc(doc(firestoreDb, "vendas", item.id), item);
     res.json({ success: true, id: item.id });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -126,7 +97,7 @@ apiRouter.post("/vendas", async (req, res) => {
 
 apiRouter.delete("/vendas/:id", async (req, res) => {
   try {
-    await db.exec("DELETE FROM vendas WHERE id = $1", [req.params.id]);
+    await deleteDoc(doc(firestoreDb, "vendas", req.params.id));
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -138,12 +109,18 @@ apiRouter.delete("/vendas/:id", async (req, res) => {
 // ==========================================================================
 apiRouter.get("/despesas", async (req, res) => {
   try {
-    const rows = await db.query("SELECT * FROM despesas ORDER BY id DESC");
-    const formatted = rows.map((r: any) => ({
-      ...r,
-      paga: intToBool(r.paga),
-    }));
-    res.json(formatted);
+    const querySnapshot = await getDocs(collection(firestoreDb, "despesas"));
+    const list: any[] = [];
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      list.push({
+        ...data,
+        id: docSnap.id,
+        paga: intToBool(data.paga),
+      });
+    });
+    list.sort((a, b) => b.id.localeCompare(a.id));
+    res.json(list);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -152,22 +129,10 @@ apiRouter.get("/despesas", async (req, res) => {
 apiRouter.post("/despesas", async (req, res) => {
   try {
     const item = req.body;
-    const existing = await db.query("SELECT id FROM despesas WHERE id = $1", [item.id]);
-    if (existing.length > 0) {
-      await db.exec(
-        `UPDATE despesas SET 
-          descricao = $2, categoria = $3, valor = $4, paga = $5, dataVencimento = $6, 
-          tipo = $7, modificadoPor = $8, modificadoEm = $9
-         WHERE id = $1`,
-        [item.id, item.descricao, item.categoria, item.valor, boolToInt(item.paga), item.dataVencimento, item.tipo, item.modificadoPor, item.modificadoEm]
-      );
-    } else {
-      await db.exec(
-        `INSERT INTO despesas (id, descricao, categoria, valor, paga, dataVencimento, tipo, criadoPor, criadoEm) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [item.id, item.descricao, item.categoria, item.valor, boolToInt(item.paga), item.dataVencimento, item.tipo, item.criadoPor, item.criadoEm]
-      );
+    if (!item.id) {
+      return res.status(400).json({ error: "O campo id é obrigatório." });
     }
+    await setDoc(doc(firestoreDb, "despesas", item.id), item);
     res.json({ success: true, id: item.id });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -176,7 +141,7 @@ apiRouter.post("/despesas", async (req, res) => {
 
 apiRouter.delete("/despesas/:id", async (req, res) => {
   try {
-    await db.exec("DELETE FROM despesas WHERE id = $1", [req.params.id]);
+    await deleteDoc(doc(firestoreDb, "despesas", req.params.id));
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -188,8 +153,13 @@ apiRouter.delete("/despesas/:id", async (req, res) => {
 // ==========================================================================
 apiRouter.get("/retiradas", async (req, res) => {
   try {
-    const rows = await db.query("SELECT * FROM retiradas ORDER BY id DESC");
-    res.json(rows);
+    const querySnapshot = await getDocs(collection(firestoreDb, "retiradas"));
+    const list: any[] = [];
+    querySnapshot.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    list.sort((a, b) => b.id.localeCompare(a.id));
+    res.json(list);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -198,22 +168,10 @@ apiRouter.get("/retiradas", async (req, res) => {
 apiRouter.post("/retiradas", async (req, res) => {
   try {
     const item = req.body;
-    const existing = await db.query("SELECT id FROM retiradas WHERE id = $1", [item.id]);
-    if (existing.length > 0) {
-      await db.exec(
-        `UPDATE retiradas SET 
-          valor = $2, data = $3, observacao = $4, socio = $5, formaPagamento = $6, 
-          modificadoPor = $7, modificadoEm = $8
-         WHERE id = $1`,
-        [item.id, item.valor, item.data, item.observacao, item.socio, item.formaPagamento, item.modificadoPor, item.modificadoEm]
-      );
-    } else {
-      await db.exec(
-        `INSERT INTO retiradas (id, valor, data, observacao, socio, formaPagamento, criadoPor, criadoEm) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [item.id, item.valor, item.data, item.observacao, item.socio, item.formaPagamento, item.criadoPor, item.criadoEm]
-      );
+    if (!item.id) {
+      return res.status(400).json({ error: "O campo id é obrigatório." });
     }
+    await setDoc(doc(firestoreDb, "retiradas", item.id), item);
     res.json({ success: true, id: item.id });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -222,7 +180,7 @@ apiRouter.post("/retiradas", async (req, res) => {
 
 apiRouter.delete("/retiradas/:id", async (req, res) => {
   try {
-    await db.exec("DELETE FROM retiradas WHERE id = $1", [req.params.id]);
+    await deleteDoc(doc(firestoreDb, "retiradas", req.params.id));
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -234,8 +192,13 @@ apiRouter.delete("/retiradas/:id", async (req, res) => {
 // ==========================================================================
 apiRouter.get("/pedidos_compra", async (req, res) => {
   try {
-    const rows = await db.query("SELECT * FROM pedidos_compra ORDER BY id DESC");
-    res.json(rows);
+    const querySnapshot = await getDocs(collection(firestoreDb, "pedidos_compra"));
+    const list: any[] = [];
+    querySnapshot.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    list.sort((a, b) => b.id.localeCompare(a.id));
+    res.json(list);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -244,22 +207,10 @@ apiRouter.get("/pedidos_compra", async (req, res) => {
 apiRouter.post("/pedidos_compra", async (req, res) => {
   try {
     const item = req.body;
-    const existing = await db.query("SELECT id FROM pedidos_compra WHERE id = $1", [item.id]);
-    if (existing.length > 0) {
-      await db.exec(
-        `UPDATE pedidos_compra SET 
-          produto = $2, quantidadeEstimada = $3, status = $4, data = $5, observacao = $6, 
-          modificadoPor = $7, modificadoEm = $8
-         WHERE id = $1`,
-        [item.id, item.produto, item.quantidadeEstimada, item.status, item.data, item.observacao, item.modificadoPor, item.modificadoEm]
-      );
-    } else {
-      await db.exec(
-        `INSERT INTO pedidos_compra (id, produto, quantidadeEstimada, status, data, observacao, criadoPor, criadoEm) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [item.id, item.produto, item.quantidadeEstimada, item.status, item.data, item.observacao, item.criadoPor, item.criadoEm]
-      );
+    if (!item.id) {
+      return res.status(400).json({ error: "O campo id é obrigatório." });
     }
+    await setDoc(doc(firestoreDb, "pedidos_compra", item.id), item);
     res.json({ success: true, id: item.id });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -268,7 +219,7 @@ apiRouter.post("/pedidos_compra", async (req, res) => {
 
 apiRouter.delete("/pedidos_compra/:id", async (req, res) => {
   try {
-    await db.exec("DELETE FROM pedidos_compra WHERE id = $1", [req.params.id]);
+    await deleteDoc(doc(firestoreDb, "pedidos_compra", req.params.id));
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -280,13 +231,19 @@ apiRouter.delete("/pedidos_compra/:id", async (req, res) => {
 // ==========================================================================
 apiRouter.get("/avisos", async (req, res) => {
   try {
-    const rows = await db.query("SELECT * FROM avisos ORDER BY id DESC");
-    const formatted = rows.map((r: any) => ({
-      ...r,
-      urgente: intToBool(r.urgente),
-      resolvido: intToBool(r.resolvido),
-    }));
-    res.json(formatted);
+    const querySnapshot = await getDocs(collection(firestoreDb, "avisos"));
+    const list: any[] = [];
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      list.push({
+        ...data,
+        id: docSnap.id,
+        urgente: intToBool(data.urgente),
+        resolvido: intToBool(data.resolvido),
+      });
+    });
+    list.sort((a, b) => b.id.localeCompare(a.id));
+    res.json(list);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -295,22 +252,10 @@ apiRouter.get("/avisos", async (req, res) => {
 apiRouter.post("/avisos", async (req, res) => {
   try {
     const item = req.body;
-    const existing = await db.query("SELECT id FROM avisos WHERE id = $1", [item.id]);
-    if (existing.length > 0) {
-      await db.exec(
-        `UPDATE avisos SET 
-          titulo = $2, conteudo = $3, categoria = $4, data = $5, autor = $6, 
-          urgente = $7, resolvido = $8, modificadoPor = $9, modificadoEm = $10
-         WHERE id = $1`,
-        [item.id, item.titulo, item.conteudo, item.categoria, item.data, item.autor, boolToInt(item.urgente), boolToInt(item.resolvido), item.modificadoPor, item.modificadoEm]
-      );
-    } else {
-      await db.exec(
-        `INSERT INTO avisos (id, titulo, conteudo, categoria, data, autor, urgente, resolvido, criadoPor, criadoEm) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-        [item.id, item.titulo, item.conteudo, item.categoria, item.data, item.autor, boolToInt(item.urgente), boolToInt(item.resolvido), item.criadoPor, item.criadoEm]
-      );
+    if (!item.id) {
+      return res.status(400).json({ error: "O campo id é obrigatório." });
     }
+    await setDoc(doc(firestoreDb, "avisos", item.id), item);
     res.json({ success: true, id: item.id });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -319,7 +264,7 @@ apiRouter.post("/avisos", async (req, res) => {
 
 apiRouter.delete("/avisos/:id", async (req, res) => {
   try {
-    await db.exec("DELETE FROM avisos WHERE id = $1", [req.params.id]);
+    await deleteDoc(doc(firestoreDb, "avisos", req.params.id));
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -331,12 +276,18 @@ apiRouter.delete("/avisos/:id", async (req, res) => {
 // ==========================================================================
 apiRouter.get("/contas_pagbank", async (req, res) => {
   try {
-    const rows = await db.query("SELECT * FROM contas_pagbank ORDER BY id ASC");
-    const formatted = rows.map((r: any) => ({
-      ...r,
-      ativa: intToBool(r.ativa),
-    }));
-    res.json(formatted);
+    const querySnapshot = await getDocs(collection(firestoreDb, "contas_pagbank"));
+    const list: any[] = [];
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      list.push({
+        ...data,
+        id: docSnap.id,
+        ativa: intToBool(data.ativa),
+      });
+    });
+    list.sort((a, b) => a.id.localeCompare(b.id));
+    res.json(list);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -345,21 +296,10 @@ apiRouter.get("/contas_pagbank", async (req, res) => {
 apiRouter.post("/contas_pagbank", async (req, res) => {
   try {
     const item = req.body;
-    const existing = await db.query("SELECT id FROM contas_pagbank WHERE id = $1", [item.id]);
-    if (existing.length > 0) {
-      await db.exec(
-        `UPDATE contas_pagbank SET 
-          nomeOuCnpj = $2, valor = $3, ativa = $4, modificadoPor = $5, modificadoEm = $6
-         WHERE id = $1`,
-        [item.id, item.nomeOuCnpj, item.valor, boolToInt(item.ativa), item.modificadoPor, item.modificadoEm]
-      );
-    } else {
-      await db.exec(
-        `INSERT INTO contas_pagbank (id, nomeOuCnpj, valor, ativa, criadoPor, criadoEm) 
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [item.id, item.nomeOuCnpj, item.valor, boolToInt(item.ativa), item.criadoPor, item.criadoEm]
-      );
+    if (!item.id) {
+      return res.status(400).json({ error: "O campo id é obrigatório." });
     }
+    await setDoc(doc(firestoreDb, "contas_pagbank", item.id), item);
     res.json({ success: true, id: item.id });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -368,7 +308,7 @@ apiRouter.post("/contas_pagbank", async (req, res) => {
 
 apiRouter.delete("/contas_pagbank/:id", async (req, res) => {
   try {
-    await db.exec("DELETE FROM contas_pagbank WHERE id = $1", [req.params.id]);
+    await deleteDoc(doc(firestoreDb, "contas_pagbank", req.params.id));
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -380,8 +320,13 @@ apiRouter.delete("/contas_pagbank/:id", async (req, res) => {
 // ==========================================================================
 apiRouter.get("/historico_compras", async (req, res) => {
   try {
-    const rows = await db.query("SELECT * FROM historico_compras ORDER BY id ASC");
-    res.json(rows);
+    const querySnapshot = await getDocs(collection(firestoreDb, "historico_compras"));
+    const list: any[] = [];
+    querySnapshot.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    list.sort((a, b) => a.id.localeCompare(b.id));
+    res.json(list);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -390,21 +335,10 @@ apiRouter.get("/historico_compras", async (req, res) => {
 apiRouter.post("/historico_compras", async (req, res) => {
   try {
     const item = req.body;
-    const existing = await db.query("SELECT id FROM historico_compras WHERE id = $1", [item.id]);
-    if (existing.length > 0) {
-      await db.exec(
-        `UPDATE historico_compras SET 
-          mesOuData = $2, valor = $3, tipo = $4
-         WHERE id = $1`,
-        [item.id, item.mesOuData, item.valor, item.tipo]
-      );
-    } else {
-      await db.exec(
-        `INSERT INTO historico_compras (id, mesOuData, valor, tipo) 
-         VALUES ($1, $2, $3, $4)`,
-        [item.id, item.mesOuData, item.valor, item.tipo]
-      );
+    if (!item.id) {
+      return res.status(400).json({ error: "O campo id é obrigatório." });
     }
+    await setDoc(doc(firestoreDb, "historico_compras", item.id), item);
     res.json({ success: true, id: item.id });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -413,7 +347,7 @@ apiRouter.post("/historico_compras", async (req, res) => {
 
 apiRouter.delete("/historico_compras/:id", async (req, res) => {
   try {
-    await db.exec("DELETE FROM historico_compras WHERE id = $1", [req.params.id]);
+    await deleteDoc(doc(firestoreDb, "historico_compras", req.params.id));
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -425,20 +359,30 @@ apiRouter.delete("/historico_compras/:id", async (req, res) => {
 // ==========================================================================
 apiRouter.get("/configuracoes", async (req, res) => {
   try {
-    const rows = await db.query("SELECT * FROM configuracoes WHERE id = 'global'");
-    if (rows.length > 0) {
-      const config = rows[0];
+    const docSnap = await getDoc(doc(firestoreDb, "configuracoes", "global"));
+    if (docSnap.exists()) {
+      const data = docSnap.data();
       res.json({
-        reservaMinima: config.reservaminima !== undefined ? config.reservaminima : config.reservaMinima,
-        despesasFixasEstimadas: config.despesasfixasestimadas !== undefined ? config.despesasfixasestimadas : config.despesasFixasEstimadas,
-        margemLucroVendas: config.margemlucrovendas !== undefined ? config.margemlucrovendas : config.margemLucroVendas,
-        compraReposicaoValor: config.comprareposicaovalor !== undefined ? config.comprareposicaovalor : config.compraReposicaoValor,
-        compraReposicaoProximaData: config.comprareposicaoproximadata !== undefined ? config.comprareposicaoproximadata : config.compraReposicaoProximaData,
-        compraReposicaoAtiva: intToBool(config.comprareposicaoativa !== undefined ? config.comprareposicaoativa : config.compraReposicaoAtiva),
-        metaFaturamento: config.metafaturamento !== undefined ? config.metafaturamento : config.metaFaturamento
+        reservaMinima: data.reservaMinima ?? 10000.00,
+        despesasFixasEstimadas: data.despesasFixasEstimadas ?? 2450.00,
+        margemLucroVendas: data.margemLucroVendas ?? 40.00,
+        compraReposicaoValor: data.compraReposicaoValor ?? 7000.00,
+        compraReposicaoProximaData: data.compraReposicaoProximaData ?? "2026-07-20",
+        compraReposicaoAtiva: intToBool(data.compraReposicaoAtiva ?? true),
+        metaFaturamento: data.metaFaturamento ?? 15000.00
       });
     } else {
-      res.status(404).json({ error: "Configurações não encontradas" });
+      const defaults = {
+        reservaMinima: 10000.00,
+        despesasFixasEstimadas: 2450.00,
+        margemLucroVendas: 40.00,
+        compraReposicaoValor: 7000.00,
+        compraReposicaoProximaData: "2026-07-20",
+        compraReposicaoAtiva: true,
+        metaFaturamento: 15000.00
+      };
+      await setDoc(doc(firestoreDb, "configuracoes", "global"), defaults);
+      res.json(defaults);
     }
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -448,18 +392,15 @@ apiRouter.get("/configuracoes", async (req, res) => {
 apiRouter.post("/configuracoes", async (req, res) => {
   try {
     const item = req.body;
-    await db.exec(
-      `UPDATE configuracoes SET 
-        reservaMinima = $1, despesasFixasEstimadas = $2, margemLucroVendas = $3, 
-        compraReposicaoValor = $4, compraReposicaoProximaData = $5, 
-        compraReposicaoAtiva = $6, metaFaturamento = $7
-       WHERE id = 'global'`,
-      [
-        item.reservaMinima, item.despesasFixasEstimadas, item.margemLucroVendas,
-        item.compraReposicaoValor, item.compraReposicaoProximaData,
-        boolToInt(item.compraReposicaoAtiva), item.metaFaturamento
-      ]
-    );
+    await setDoc(doc(firestoreDb, "configuracoes", "global"), {
+      reservaMinima: item.reservaMinima,
+      despesasFixasEstimadas: item.despesasFixasEstimadas,
+      margemLucroVendas: item.margemLucroVendas,
+      compraReposicaoValor: item.compraReposicaoValor,
+      compraReposicaoProximaData: item.compraReposicaoProximaData,
+      compraReposicaoAtiva: intToBool(item.compraReposicaoAtiva),
+      metaFaturamento: item.metaFaturamento
+    });
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -471,11 +412,13 @@ apiRouter.post("/configuracoes", async (req, res) => {
 // ==========================================================================
 apiRouter.get("/caixa", async (req, res) => {
   try {
-    const rows = await db.query("SELECT * FROM caixa WHERE id = 'fisico'");
-    if (rows.length > 0) {
-      res.json({ saldo: rows[0].saldo });
+    const docSnap = await getDoc(doc(firestoreDb, "caixa", "fisico"));
+    if (docSnap.exists()) {
+      res.json({ saldo: docSnap.data().saldo });
     } else {
-      res.status(404).json({ error: "Caixa físico não encontrado" });
+      const defaults = { saldo: 1500.00 };
+      await setDoc(doc(firestoreDb, "caixa", "fisico"), defaults);
+      res.json(defaults);
     }
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -485,7 +428,7 @@ apiRouter.get("/caixa", async (req, res) => {
 apiRouter.post("/caixa", async (req, res) => {
   try {
     const { saldo } = req.body;
-    await db.exec("UPDATE caixa SET saldo = $1 WHERE id = 'fisico'", [saldo]);
+    await setDoc(doc(firestoreDb, "caixa", "fisico"), { saldo });
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -499,111 +442,75 @@ apiRouter.post("/redefinir-dados", async (req, res) => {
   try {
     const { acao, dados } = req.body;
 
-    // Limpar as tabelas operacionais
     const tabelas = [
       "manutencoes", "vendas", "despesas", "retiradas",
       "pedidos_compra", "avisos", "contas_pagbank", "historico_compras"
     ];
 
+    // Excluir coleções operacionais no Firestore
     for (const tab of tabelas) {
-      await db.exec(`DELETE FROM ${tab}`);
+      const querySnapshot = await getDocs(collection(firestoreDb, tab));
+      for (const docSnap of querySnapshot.docs) {
+        await deleteDoc(doc(firestoreDb, tab, docSnap.id));
+      }
     }
 
     if (acao === "carregar_demonstracao" && dados) {
-      console.log("📥 Carregando dados de demonstração no banco SQL...");
+      console.log("📥 Carregando dados de demonstração no Firestore...");
 
       // Carregar manutenções
       if (Array.isArray(dados.manutencoes)) {
         for (const item of dados.manutencoes) {
-          await db.exec(
-            `INSERT INTO manutencoes (
-              id, os, cliente, aparelho, marca, modelo, cor, situacao, valorPeca, maoDeObra, 
-              valorCobrado, lucro, pagoPeloCliente, pecaPaga, data, garantiaAte, criadoPor, criadoEm
-             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
-            [
-              item.id, item.os, item.cliente, item.aparelho, item.marca, item.modelo, item.cor,
-              item.situacao, item.valorPeca, item.maoDeObra, item.valorCobrado, item.lucro,
-              boolToInt(item.pagoPeloCliente), boolToInt(item.pecaPaga), item.data, item.garantiaAte,
-              item.criadoPor, item.criadoEm
-            ]
-          );
+          await setDoc(doc(firestoreDb, "manutencoes", item.id), item);
         }
       }
 
       // Carregar vendas
       if (Array.isArray(dados.vendas)) {
         for (const item of dados.vendas) {
-          await db.exec(
-            `INSERT INTO vendas (id, data, debito, credito, pix, dinheiro, total, observacao, criadoPor, criadoEm) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-            [item.id, item.data, item.debito, item.credito, item.pix, item.dinheiro, item.total, item.observacao, item.criadoPor, item.criadoEm]
-          );
+          await setDoc(doc(firestoreDb, "vendas", item.id), item);
         }
       }
 
       // Carregar despesas
       if (Array.isArray(dados.despesas)) {
         for (const item of dados.despesas) {
-          await db.exec(
-            `INSERT INTO despesas (id, descricao, categoria, valor, paga, dataVencimento, tipo, criadoPor, criadoEm) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-            [item.id, item.descricao, item.categoria, item.valor, boolToInt(item.paga), item.dataVencimento, item.tipo, item.criadoPor, item.criadoEm]
-          );
+          await setDoc(doc(firestoreDb, "despesas", item.id), item);
         }
       }
 
       // Carregar retiradas
       if (Array.isArray(dados.retiradas)) {
         for (const item of dados.retiradas) {
-          await db.exec(
-            `INSERT INTO retiradas (id, valor, data, observacao, socio, formaPagamento, criadoPor, criadoEm) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-            [item.id, item.valor, item.data, item.observacao, item.socio, item.formaPagamento, item.criadoPor, item.criadoEm]
-          );
+          await setDoc(doc(firestoreDb, "retiradas", item.id), item);
         }
       }
 
       // Carregar pedidos
       if (Array.isArray(dados.pedidos_compra)) {
         for (const item of dados.pedidos_compra) {
-          await db.exec(
-            `INSERT INTO pedidos_compra (id, produto, quantidadeEstimada, status, data, observacao, criadoPor, criadoEm) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-            [item.id, item.produto, item.quantidadeEstimada, item.status, item.data, item.observacao, item.criadoPor, item.criadoEm]
-          );
+          await setDoc(doc(firestoreDb, "pedidos_compra", item.id), item);
         }
       }
 
       // Carregar avisos
       if (Array.isArray(dados.avisos)) {
         for (const item of dados.avisos) {
-          await db.exec(
-            `INSERT INTO avisos (id, titulo, conteudo, categoria, data, autor, urgente, resolvido, criadoPor, criadoEm) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-            [item.id, item.titulo, item.conteudo, item.categoria, item.data, item.autor, boolToInt(item.urgente), boolToInt(item.resolvido), item.criadoPor, item.criadoEm]
-          );
+          await setDoc(doc(firestoreDb, "avisos", item.id), item);
         }
       }
 
       // Carregar contas PagBank
       if (Array.isArray(dados.contas_pagbank)) {
         for (const item of dados.contas_pagbank) {
-          await db.exec(
-            `INSERT INTO contas_pagbank (id, nomeOuCnpj, valor, ativa, criadoPor, criadoEm) 
-             VALUES ($1, $2, $3, $4, $5, $6)`,
-            [item.id, item.nomeOuCnpj, item.valor, boolToInt(item.ativa), item.criadoPor, item.criadoEm]
-          );
+          await setDoc(doc(firestoreDb, "contas_pagbank", item.id), item);
         }
       }
 
       // Carregar histórico compras
       if (Array.isArray(dados.historico_compras)) {
         for (const item of dados.historico_compras) {
-          await db.exec(
-            `INSERT INTO historico_compras (id, mesOuData, valor, tipo) 
-             VALUES ($1, $2, $3, $4)`,
-            [item.id, item.mesOuData, item.valor, item.tipo]
-          );
+          await setDoc(doc(firestoreDb, "historico_compras", item.id), item);
         }
       }
     }
@@ -625,269 +532,29 @@ apiRouter.post("/sincronizar/:colecao", async (req, res) => {
     return res.status(400).json({ error: "O campo lista deve ser um array." });
   }
 
-  console.log(`☁️ [Sincronizador] Sincronizando coleção '${colecao}' com ${lista.length} itens locais...`);
+  console.log(`☁️ [Sincronizador Firestore] Sincronizando coleção '${colecao}' com ${lista.length} itens locais...`);
 
   try {
+    const querySnapshot = await getDocs(collection(firestoreDb, colecao));
+    const idsNoBanco = querySnapshot.docs.map(docSnap => docSnap.id);
     const idsNaNovaLista = new Set(lista.filter(item => item && item.id).map(item => item.id));
 
-    if (colecao === "manutencoes") {
-      const existingRows = await db.query("SELECT id FROM manutencoes");
-      const idsNoBanco = existingRows.map((r: any) => r.id);
-      
-      // 1. Deleta os que sumiram
-      for (const id of idsNoBanco) {
-        if (!idsNaNovaLista.has(id)) {
-          await db.exec("DELETE FROM manutencoes WHERE id = $1", [id]);
-        }
+    // 1. Deleta os que sumiram
+    for (const id of idsNoBanco) {
+      if (!idsNaNovaLista.has(id)) {
+        await deleteDoc(doc(firestoreDb, colecao, id));
       }
+    }
 
-      // 2. Upsert
-      for (const item of lista) {
-        if (!item || !item.id) continue;
-        const exists = await db.query("SELECT id FROM manutencoes WHERE id = $1", [item.id]);
-        if (exists.length > 0) {
-          await db.exec(
-            `UPDATE manutencoes SET 
-              os = $2, cliente = $3, aparelho = $4, marca = $5, modelo = $6, cor = $7, 
-              situacao = $8, valorPeca = $9, maoDeObra = $10, valorCobrado = $11, lucro = $12, 
-              pagoPeloCliente = $13, pecaPaga = $14, data = $15, garantiaAte = $16,
-              modificadoPor = $17, modificadoEm = $18
-             WHERE id = $1`,
-            [
-              item.id, item.os, item.cliente, item.aparelho, item.marca, item.modelo, item.cor,
-              item.situacao, item.valorPeca, item.maoDeObra, item.valorCobrado, item.lucro,
-              boolToInt(item.pagoPeloCliente), boolToInt(item.pecaPaga), item.data, item.garantiaAte,
-              item.modificadoPor, item.modificadoEm
-            ]
-          );
-        } else {
-          await db.exec(
-            `INSERT INTO manutencoes (
-              id, os, cliente, aparelho, marca, modelo, cor, situacao, valorPeca, maoDeObra, 
-              valorCobrado, lucro, pagoPeloCliente, pecaPaga, data, garantiaAte, criadoPor, criadoEm
-             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
-            [
-              item.id, item.os, item.cliente, item.aparelho, item.marca, item.modelo, item.cor,
-              item.situacao, item.valorPeca, item.maoDeObra, item.valorCobrado, item.lucro,
-              boolToInt(item.pagoPeloCliente), boolToInt(item.pecaPaga), item.data, item.garantiaAte,
-              item.criadoPor, item.criadoEm
-            ]
-          );
-        }
-      }
-
-    } else if (colecao === "vendas") {
-      const existingRows = await db.query("SELECT id FROM vendas");
-      const idsNoBanco = existingRows.map((r: any) => r.id);
-      
-      for (const id of idsNoBanco) {
-        if (!idsNaNovaLista.has(id)) {
-          await db.exec("DELETE FROM vendas WHERE id = $1", [id]);
-        }
-      }
-
-      for (const item of lista) {
-        if (!item || !item.id) continue;
-        const exists = await db.query("SELECT id FROM vendas WHERE id = $1", [item.id]);
-        if (exists.length > 0) {
-          await db.exec(
-            `UPDATE vendas SET 
-              data = $2, debito = $3, credito = $4, pix = $5, dinheiro = $6, total = $7, 
-              observacao = $8, modificadoPor = $9, modificadoEm = $10
-             WHERE id = $1`,
-            [item.id, item.data, item.debito, item.credito, item.pix, item.dinheiro, item.total, item.observacao, item.modificadoPor, item.modificadoEm]
-          );
-        } else {
-          await db.exec(
-            `INSERT INTO vendas (id, data, debito, credito, pix, dinheiro, total, observacao, criadoPor, criadoEm) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-            [item.id, item.data, item.debito, item.credito, item.pix, item.dinheiro, item.total, item.observacao, item.criadoPor, item.criadoEm]
-          );
-        }
-      }
-
-    } else if (colecao === "despesas") {
-      const existingRows = await db.query("SELECT id FROM despesas");
-      const idsNoBanco = existingRows.map((r: any) => r.id);
-      
-      for (const id of idsNoBanco) {
-        if (!idsNaNovaLista.has(id)) {
-          await db.exec("DELETE FROM despesas WHERE id = $1", [id]);
-        }
-      }
-
-      for (const item of lista) {
-        if (!item || !item.id) continue;
-        const exists = await db.query("SELECT id FROM despesas WHERE id = $1", [item.id]);
-        if (exists.length > 0) {
-          await db.exec(
-            `UPDATE despesas SET 
-              descricao = $2, categoria = $3, valor = $4, paga = $5, dataVencimento = $6, 
-              tipo = $7, modificadoPor = $8, modificadoEm = $9
-             WHERE id = $1`,
-            [item.id, item.descricao, item.categoria, item.valor, boolToInt(item.paga), item.dataVencimento, item.tipo, item.modificadoPor, item.modificadoEm]
-          );
-        } else {
-          await db.exec(
-            `INSERT INTO despesas (id, descricao, categoria, valor, paga, dataVencimento, tipo, criadoPor, criadoEm) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-            [item.id, item.descricao, item.categoria, item.valor, boolToInt(item.paga), item.dataVencimento, item.tipo, item.criadoPor, item.criadoEm]
-          );
-        }
-      }
-
-    } else if (colecao === "retiradas") {
-      const existingRows = await db.query("SELECT id FROM retiradas");
-      const idsNoBanco = existingRows.map((r: any) => r.id);
-      
-      for (const id of idsNoBanco) {
-        if (!idsNaNovaLista.has(id)) {
-          await db.exec("DELETE FROM retiradas WHERE id = $1", [id]);
-        }
-      }
-
-      for (const item of lista) {
-        if (!item || !item.id) continue;
-        const exists = await db.query("SELECT id FROM retiradas WHERE id = $1", [item.id]);
-        if (exists.length > 0) {
-          await db.exec(
-            `UPDATE retiradas SET 
-              valor = $2, data = $3, observacao = $4, socio = $5, formaPagamento = $6, 
-              modificadoPor = $7, modificadoEm = $8
-             WHERE id = $1`,
-            [item.id, item.valor, item.data, item.observacao, item.socio, item.formaPagamento, item.modificadoPor, item.modificadoEm]
-          );
-        } else {
-          await db.exec(
-            `INSERT INTO retiradas (id, valor, data, observacao, socio, formaPagamento, criadoPor, criadoEm) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-            [item.id, item.valor, item.data, item.observacao, item.socio, item.formaPagamento, item.criadoPor, item.criadoEm]
-          );
-        }
-      }
-
-    } else if (colecao === "pedidos_compra") {
-      const existingRows = await db.query("SELECT id FROM pedidos_compra");
-      const idsNoBanco = existingRows.map((r: any) => r.id);
-      
-      for (const id of idsNoBanco) {
-        if (!idsNaNovaLista.has(id)) {
-          await db.exec("DELETE FROM pedidos_compra WHERE id = $1", [id]);
-        }
-      }
-
-      for (const item of lista) {
-        if (!item || !item.id) continue;
-        const exists = await db.query("SELECT id FROM pedidos_compra WHERE id = $1", [item.id]);
-        if (exists.length > 0) {
-          await db.exec(
-            `UPDATE pedidos_compra SET 
-              produto = $2, quantidadeEstimada = $3, status = $4, data = $5, observacao = $6, 
-              modificadoPor = $7, modificadoEm = $8
-             WHERE id = $1`,
-            [item.id, item.produto, item.quantidadeEstimada, item.status, item.data, item.observacao, item.modificadoPor, item.modificadoEm]
-          );
-        } else {
-          await db.exec(
-            `INSERT INTO pedidos_compra (id, produto, quantidadeEstimada, status, data, observacao, criadoPor, criadoEm) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-            [item.id, item.produto, item.quantidadeEstimada, item.status, item.data, item.observacao, item.criadoPor, item.criadoEm]
-          );
-        }
-      }
-
-    } else if (colecao === "avisos") {
-      const existingRows = await db.query("SELECT id FROM avisos");
-      const idsNoBanco = existingRows.map((r: any) => r.id);
-      
-      for (const id of idsNoBanco) {
-        if (!idsNaNovaLista.has(id)) {
-          await db.exec("DELETE FROM avisos WHERE id = $1", [id]);
-        }
-      }
-
-      for (const item of lista) {
-        if (!item || !item.id) continue;
-        const exists = await db.query("SELECT id FROM avisos WHERE id = $1", [item.id]);
-        if (exists.length > 0) {
-          await db.exec(
-            `UPDATE avisos SET 
-              titulo = $2, conteudo = $3, categoria = $4, data = $5, autor = $6, 
-              urgente = $7, resolvido = $8, modificadoPor = $9, modificadoEm = $10
-             WHERE id = $1`,
-            [item.id, item.titulo, item.conteudo, item.categoria, item.data, item.autor, boolToInt(item.urgente), boolToInt(item.resolvido), item.modificadoPor, item.modificadoEm]
-          );
-        } else {
-          await db.exec(
-            `INSERT INTO avisos (id, titulo, conteudo, categoria, data, autor, urgente, resolvido, criadoPor, criadoEm) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-            [item.id, item.titulo, item.conteudo, item.categoria, item.data, item.autor, boolToInt(item.urgente), boolToInt(item.resolvido), item.criadoPor, item.criadoEm]
-          );
-        }
-      }
-
-    } else if (colecao === "contas_pagbank") {
-      const existingRows = await db.query("SELECT id FROM contas_pagbank");
-      const idsNoBanco = existingRows.map((r: any) => r.id);
-      
-      for (const id of idsNoBanco) {
-        if (!idsNaNovaLista.has(id)) {
-          await db.exec("DELETE FROM contas_pagbank WHERE id = $1", [id]);
-        }
-      }
-
-      for (const item of lista) {
-        if (!item || !item.id) continue;
-        const exists = await db.query("SELECT id FROM contas_pagbank WHERE id = $1", [item.id]);
-        if (exists.length > 0) {
-          await db.exec(
-            `UPDATE contas_pagbank SET 
-              nomeOuCnpj = $2, valor = $3, ativa = $4, modificadoPor = $5, modificadoEm = $6
-             WHERE id = $1`,
-            [item.id, item.nomeOuCnpj, item.valor, boolToInt(item.ativa), item.modificadoPor, item.modificadoEm]
-          );
-        } else {
-          await db.exec(
-            `INSERT INTO contas_pagbank (id, nomeOuCnpj, valor, ativa, criadoPor, criadoEm) 
-             VALUES ($1, $2, $3, $4, $5, $6)`,
-            [item.id, item.nomeOuCnpj, item.valor, boolToInt(item.ativa), item.criadoPor, item.criadoEm]
-          );
-        }
-      }
-
-    } else if (colecao === "historico_compras") {
-      const existingRows = await db.query("SELECT id FROM historico_compras");
-      const idsNoBanco = existingRows.map((r: any) => r.id);
-      
-      for (const id of idsNoBanco) {
-        if (!idsNaNovaLista.has(id)) {
-          await db.exec("DELETE FROM historico_compras WHERE id = $1", [id]);
-        }
-      }
-
-      for (const item of lista) {
-        if (!item || !item.id) continue;
-        const exists = await db.query("SELECT id FROM historico_compras WHERE id = $1", [item.id]);
-        if (exists.length > 0) {
-          await db.exec(
-            `UPDATE historico_compras SET 
-              mesOuData = $2, valor = $3, tipo = $4
-             WHERE id = $1`,
-            [item.id, item.mesOuData, item.valor, item.tipo]
-          );
-        } else {
-          await db.exec(
-            `INSERT INTO historico_compras (id, mesOuData, valor, tipo) 
-             VALUES ($1, $2, $3, $4)`,
-            [item.id, item.mesOuData, item.valor, item.tipo]
-          );
-        }
-      }
+    // 2. Upsert os itens da lista
+    for (const item of lista) {
+      if (!item || !item.id) continue;
+      await setDoc(doc(firestoreDb, colecao, item.id), item);
     }
 
     res.json({ success: true, count: lista.length });
   } catch (err: any) {
-    console.error(`❌ [Sincronizador] Erro ao sincronizar coleção ${colecao}:`, err);
+    console.error(`❌ [Sincronizador Firestore] Erro ao sincronizar coleção ${colecao}:`, err);
     res.status(500).json({ error: err.message });
   }
 });
